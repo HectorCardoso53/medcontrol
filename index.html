@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle de Medicamentos</title>
+    <link rel="stylesheet" href="style.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Cabeçalho -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <rect width="40" height="40" rx="8" fill="currentColor" opacity="0.1"/>
+                        <path d="M20 10v20M10 20h20" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                    <h1>MedControl</h1>
+                </div>
+                <nav class="nav-menu">
+                    <button class="nav-btn active" data-section="atendimento">
+                        <span class="icon">👥</span>
+                        Atendimento
+                    </button>
+                    <button class="nav-btn" data-section="medicamentos">
+                        <span class="icon">💊</span>
+                        Medicamentos
+                    </button>
+                    <button class="nav-btn" data-section="saidas">
+                        <span class="icon">📤</span>
+                        Saídas
+                    </button>
+                    <button class="nav-btn" data-section="estoque">
+                        <span class="icon">📦</span>
+                        Estoque
+                    </button>
+                    <button class="nav-btn" data-section="relatorios">
+                        <span class="icon">📊</span>
+                        Relatórios
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <!-- SEÇÃO: CADASTRO DE ATENDIMENTO -->
+            <section id="atendimento" class="section active">
+                <div class="section-header">
+                    <h2>Cadastro de Atendimento</h2>
+                    <p class="subtitle">Registre atendimentos e distribua medicamentos aos pacientes</p>
+                </div>
+
+                <div class="card">
+                    <form id="formAtendimento" class="form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="dataAtendimento">Data do Atendimento</label>
+                                <input type="date" id="dataAtendimento" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="nomePaciente">Nome do Paciente</label>
+                                <input type="text" id="nomePaciente" placeholder="Ex: João Silva" required>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label for="endereco">Endereço</label>
+                                <input type="text" id="endereco" placeholder="Ex: Rua das Flores, 123" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="bairro">Bairro</label>
+                                <input type="text" id="bairro" placeholder="Ex: Centro" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="contato">Contato</label>
+                                <input type="tel" id="contato" placeholder="(00) 00000-0000" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="medicamentoAtend">Medicamento</label>
+                                <select id="medicamentoAtend" required>
+                                    <option value="">Selecione um medicamento</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quantidadeEntregue">Quantidade Entregue</label>
+                                <input type="number" id="quantidadeEntregue" min="1" placeholder="0" required>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <span class="icon">✓</span>
+                                Salvar Atendimento
+                            </button>
+                            <button type="reset" class="btn btn-secondary">
+                                <span class="icon">↺</span>
+                                Limpar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Atendimentos Recentes</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Paciente</th>
+                                    <th>Bairro</th>
+                                    <th>Medicamento</th>
+                                    <th>Quantidade</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaAtendimentos"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEÇÃO: CADASTRO DE MEDICAMENTOS -->
+            <section id="medicamentos" class="section">
+                <div class="section-header">
+                    <h2>Cadastro de Medicamentos</h2>
+                    <p class="subtitle">Registre a entrada de medicamentos no estoque</p>
+                </div>
+
+                <div class="card">
+                    <form id="formMedicamentos" class="form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="codigoMed">Código do Medicamento</label>
+                                <input type="text" id="codigoMed" placeholder="Ex: MED001" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="descricaoMed">Descrição do Medicamento</label>
+                                <input type="text" id="descricaoMed" placeholder="Ex: Paracetamol 500mg" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="dataRecebimento">Data de Recebimento</label>
+                                <input type="date" id="dataRecebimento" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="lote">Lote</label>
+                                <input type="text" id="lote" placeholder="Ex: L12345" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="dataValidade">Data de Validade</label>
+                                <input type="date" id="dataValidade" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quantidadeRecebida">Quantidade Recebida</label>
+                                <input type="number" id="quantidadeRecebida" min="1" placeholder="0" required>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <span class="icon">✓</span>
+                                Cadastrar Medicamento
+                            </button>
+                            <button type="reset" class="btn btn-secondary">
+                                <span class="icon">↺</span>
+                                Limpar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Medicamentos Cadastrados</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Descrição</th>
+                                    <th>Lote</th>
+                                    <th>Validade</th>
+                                    <th>Quantidade</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaMedicamentos"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEÇÃO: CONTROLE DE SAÍDAS -->
+            <section id="saidas" class="section">
+                <div class="section-header">
+                    <h2>Controle de Saída de Medicamentos</h2>
+                    <p class="subtitle">Visualize todas as saídas registradas no sistema</p>
+                </div>
+
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Medicamento</th>
+                                    <th>Lote</th>
+                                    <th>Quantidade</th>
+                                    <th>Referência</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaSaidas"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEÇÃO: ESTOQUE -->
+            <section id="estoque" class="section">
+                <div class="section-header">
+                    <h2>Estoque de Medicamentos</h2>
+                    <p class="subtitle">Acompanhe o saldo disponível e validades</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">📦</div>
+                        <div class="stat-content">
+                            <p class="stat-label">Total em Estoque</p>
+                            <p class="stat-value" id="totalEstoque">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">⚠️</div>
+                        <div class="stat-content">
+                            <p class="stat-label">Estoque Baixo</p>
+                            <p class="stat-value" id="estoqueBaixo">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">📅</div>
+                        <div class="stat-content">
+                            <p class="stat-label">Próximos do Vencimento</p>
+                            <p class="stat-value" id="proximosVencer">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">💊</div>
+                        <div class="stat-content">
+                            <p class="stat-label">Tipos Cadastrados</p>
+                            <p class="stat-value" id="tiposMedicamentos">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Medicamento</th>
+                                    <th>Total Recebido</th>
+                                    <th>Total Distribuído</th>
+                                    <th>Saldo</th>
+                                    <th>Validade Próxima</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaEstoque"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEÇÃO: RELATÓRIOS -->
+            <section id="relatorios" class="section">
+                <div class="section-header">
+                    <h2>Relatórios e Análises</h2>
+                    <p class="subtitle">Visualize estatísticas e tendências do sistema</p>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="card">
+                        <h3 class="card-title">Bairros Mais Atendidos</h3>
+                        <div class="chart-container">
+                            <canvas id="chartBairros"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="card-title">Medicamentos Mais Distribuídos</h3>
+                        <div class="chart-container">
+                            <canvas id="chartMedicamentos"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Tabela: Bairros</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Bairro</th>
+                                    <th>Total de Atendimentos</th>
+                                    <th>Percentual</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaBairros"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Tabela: Medicamentos</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Medicamento</th>
+                                    <th>Total Distribuído</th>
+                                    <th>Percentual</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaMedicamentosRelatorio"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Toast de Notificação -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
