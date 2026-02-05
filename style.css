@@ -101,26 +101,19 @@ body {
     padding: 0 var(--spacing-lg);
 }
 
-.header-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-lg) 0;
-    gap: var(--spacing-xl);
-}
 
 .logo {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
-    color: var(--primary);
-    font-weight: 700;
-    font-size: 1.5rem;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
-.logo svg {
-    animation: pulse 2s ease-in-out infinite;
+.logo img {
+    height: 64px; /* melhor proporção */
 }
+
+
 
 @keyframes pulse {
     0%, 100% { transform: scale(1); }
@@ -137,9 +130,10 @@ body {
 
 .nav-menu {
     display: flex;
+    align-items: center;
     gap: var(--spacing-xs);
-    flex-wrap: wrap;
 }
+
 
 .nav-btn {
     display: flex;
@@ -593,49 +587,46 @@ body {
 }
 
 @media (max-width: 768px) {
+
     .header-content {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing-md);
+        flex-direction: row;
+        align-items: center;
     }
-    
+
+    /* Botão hambúrguer à direita */
+    .menu-toggle {
+        display: block;
+        margin-left: auto;
+        font-size: 28px;
+    }
+
+    /* Menu dropdown */
     .nav-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
         width: 100%;
-        overflow-x: auto;
-        padding-bottom: var(--spacing-xs);
+        background: var(--bg-secondary);
+        flex-direction: column;
+        display: none;
+        padding: var(--spacing-sm) 0;
+        box-shadow: var(--shadow-lg);
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        z-index: 999;
     }
-    
+
+    .nav-menu.active {
+        display: flex;
+    }
+
     .nav-btn {
-        white-space: nowrap;
-        font-size: 0.875rem;
-        padding: var(--spacing-xs) var(--spacing-md);
-    }
-    
-    .section-header h2 {
-        font-size: 1.5rem;
-    }
-    
-    .form-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .stat-card {
-        padding: var(--spacing-md);
-    }
-    
-    .data-table {
-        font-size: 0.875rem;
-    }
-    
-    .data-table th,
-    .data-table td {
-        padding: var(--spacing-sm) var(--spacing-md);
+        width: 100%;
+        justify-content: flex-start;
+        padding: var(--spacing-md) var(--spacing-lg);
+        border-radius: 0;
     }
 }
+
 
 @media (max-width: 480px) {
     .container {
@@ -690,3 +681,171 @@ body {
     );
     background-size: 1000px 100%;
 }
+
+/* =========================
+   MENU HAMBÚRGUER - MOBILE
+   ========================= */
+
+.menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--text-primary); /* AGORA APARECE */
+}
+
+/* ===================================
+   AJUSTE DO TÍTULO NO MOBILE
+   =================================== */
+
+@media (max-width: 768px) {
+    .logo h1 {
+        font-size: 1.05rem;       /* diminui bem */
+        line-height: 1.2;         /* quebra certinho */
+        max-width: 220px;         /* força quebra */
+        white-space: normal;      /* permite quebrar linha */
+        word-break: break-word;   /* segurança */
+    }
+}
+
+/* Telas MUITO pequenas */
+@media (max-width: 480px) {
+    .logo h1 {
+        font-size: 0.95rem;
+        max-width: 180px;
+    }
+}
+
+
+
+/* Mobile */
+@media (max-width: 768px) {
+    .menu-toggle {
+        display: block;
+    }
+
+    .nav-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: #0f172a;
+        flex-direction: column;
+        display: none;
+        padding: 10px 0;
+        z-index: 999;
+    }
+
+    .nav-menu.active {
+        display: flex;
+    }
+
+    .nav-btn {
+        width: 100%;
+        justify-content: flex-start;
+        padding: 14px 20px;
+        border-radius: 0;
+    }
+}
+
+
+/* ===================================
+   AJUSTES FINAIS MENU HAMBÚRGUER
+   (SEM ALTERAR ESTRUTURA EXISTENTE)
+   =================================== */
+
+/* Header precisa ser referência */
+.header-content {
+    position: relative;
+}
+
+/* Garantir visibilidade do botão */
+.menu-toggle {
+    z-index: 1001;
+}
+
+/* MOBILE – sobrescreve comportamento antigo */
+@media (max-width: 768px) {
+
+    /* Mantém layout do header */
+    .header-content {
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+}
+
+
+    /* Menu hambúrguer escondido por padrão */
+    .nav-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: var(--bg-secondary);
+        flex-direction: column;
+        display: none;
+        padding: var(--spacing-sm) 0;
+        box-shadow: var(--shadow-lg);
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        overflow: hidden;
+    }
+
+    /* Menu aberto */
+    .nav-menu.active {
+        display: flex;
+    }
+
+    /* Botões em coluna */
+    .nav-btn {
+        width: 100%;
+        justify-content: flex-start;
+        padding: var(--spacing-md) var(--spacing-lg);
+        border-radius: 0;
+    }
+}
+
+/* ===================================
+   FOOTER INSTITUCIONAL (COMPACTO)
+   =================================== */
+.footer {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    margin-top: var(--spacing-lg); /* reduz espaço */
+}
+
+.footer-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 0; /* bem mais baixo */
+    text-align: center;
+}
+
+.footer span {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.footer strong {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.footer-divider {
+    opacity: 0.4;
+}
+
+.footer-sub {
+    color: var(--text-tertiary);
+}
+
+

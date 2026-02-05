@@ -1,13 +1,45 @@
-// ===================================
-// INICIALIZAÇÃO E CONFIGURAÇÃO
-// ===================================
+import {
+    db,
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc,
+    query,
+    orderBy
+} from "./firebase.js";
 
-// LocalStorage Keys
-const STORAGE_KEYS = {
-    ATENDIMENTOS: 'medcontrol_atendimentos',
-    MEDICAMENTOS: 'medcontrol_medicamentos',
-    SAIDAS: 'medcontrol_saidas'
-};
+
+
+async function carregarDados() {
+    state.atendimentos = [];
+    state.medicamentos = [];
+    state.saidas = [];
+
+    const medsSnap = await getDocs(
+        query(collection(db, "medicamentos"), orderBy("dataRecebimento", "desc"))
+    );
+    medsSnap.forEach(doc =>
+        state.medicamentos.push({ id: doc.id, ...doc.data() })
+    );
+
+    const atendSnap = await getDocs(
+        query(collection(db, "atendimentos"), orderBy("data", "desc"))
+    );
+    atendSnap.forEach(doc =>
+        state.atendimentos.push({ id: doc.id, ...doc.data() })
+    );
+
+    const saidasSnap = await getDocs(
+        query(collection(db, "saidas"), orderBy("data", "desc"))
+    );
+    saidasSnap.forEach(doc =>
+        state.saidas.push({ id: doc.id, ...doc.data() })
+    );
+
+    console.log("🔥 Dados carregados do Firestore");
+}
+
 
 // Configurações Globais
 const CONFIG = {
@@ -16,31 +48,46 @@ const CONFIG = {
     FORMATO_DATA: 'pt-BR'
 };
 
+const LISTA_BAIRROS = [
+    "Centro",
+    "Nova República",
+    "São José",
+    "Santa Luzia",
+    "Nossa Senhora de Fátima",
+    "Área Rural"
+];
+
+
 // Estado Global
 let state = {
-    atendimentos: [],
-    medicamentos: [],
-    saidas: [],
-    charts: {}
+  atendimentos: [],
+  medicamentos: [],
+  saidas: [],
+  charts: {}
 };
+
+let atendimentosFiltrados = []; // 🔥 ESSA LINHA FALTAVA
 
 // ===================================
 // FUNÇÕES DE UTILIDADE
 // ===================================
 
-// Carrega dados do LocalStorage
-function carregarDados() {
-    state.atendimentos = JSON.parse(localStorage.getItem(STORAGE_KEYS.ATENDIMENTOS)) || [];
-    state.medicamentos = JSON.parse(localStorage.getItem(STORAGE_KEYS.MEDICAMENTOS)) || [];
-    state.saidas = JSON.parse(localStorage.getItem(STORAGE_KEYS.SAIDAS)) || [];
+function carregarSelectBairros() {
+    const select = document.getElementById('bairro');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Selecione o bairro</option>';
+
+    LISTA_BAIRROS
+        .sort((a, b) => a.localeCompare(b))
+        .forEach(bairro => {
+            const option = document.createElement('option');
+            option.value = bairro;
+            option.textContent = bairro;
+            select.appendChild(option);
+        });
 }
 
-// Salva dados no LocalStorage
-function salvarDados() {
-    localStorage.setItem(STORAGE_KEYS.ATENDIMENTOS, JSON.stringify(state.atendimentos));
-    localStorage.setItem(STORAGE_KEYS.MEDICAMENTOS, JSON.stringify(state.medicamentos));
-    localStorage.setItem(STORAGE_KEYS.SAIDAS, JSON.stringify(state.saidas));
-}
 
 // Formata data para exibição
 function formatarData(data) {
@@ -60,7 +107,7 @@ function mostrarToast(mensagem, tipo = 'success') {
     toast.textContent = mensagem;
     toast.className = `toast ${tipo}`;
     toast.classList.add('show');
-    
+
     setTimeout(() => {
         toast.classList.remove('show');
     }, 3000);
@@ -81,19 +128,19 @@ function diasAteVencimento(dataValidade) {
 function inicializarNavegacao() {
     const navButtons = document.querySelectorAll('.nav-btn');
     const sections = document.querySelectorAll('.section');
-    
+
     navButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const targetSection = btn.dataset.section;
-            
+
             // Remove active de todos os botões e seções
             navButtons.forEach(b => b.classList.remove('active'));
             sections.forEach(s => s.classList.remove('active'));
-            
+
             // Adiciona active ao botão e seção clicados
             btn.classList.add('active');
             document.getElementById(targetSection).classList.add('active');
-            
+
             // Atualiza dados da seção
             atualizarSecao(targetSection);
         });
@@ -101,21 +148,24 @@ function inicializarNavegacao() {
 }
 
 function atualizarSecao(secao) {
-    switch(secao) {
-        case 'atendimento':
-            carregarTabelaAtendimentos();
-            carregarSelectMedicamentos();
+    switch (secao) {
+        case 'relacao-atendimentos':
+            carregarRelacaoAtendimentos();
             break;
+
         case 'medicamentos':
             carregarTabelaMedicamentos();
             break;
+
         case 'saidas':
             carregarTabelaSaidas();
             break;
+
         case 'estoque':
             carregarTabelaEstoque();
             atualizarCardsEstoque();
             break;
+
         case 'relatorios':
             carregarRelatorios();
             break;
@@ -129,142 +179,159 @@ function atualizarSecao(secao) {
 function inicializarFormAtendimento() {
     const form = document.getElementById('formAtendimento');
     const dataInput = document.getElementById('dataAtendimento');
-    
-    // Define data atual como padrão
+
     dataInput.value = new Date().toISOString().split('T')[0];
-    
-    form.addEventListener('submit', (e) => {
+
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        const medicamentoSelecionado = document.getElementById('medicamentoAtend').value;
-        const quantidade = parseInt(document.getElementById('quantidadeEntregue').value);
-        
-        // Valida quantidade
-        if (quantidade <= 0) {
-            mostrarToast('Quantidade deve ser maior que zero!', 'error');
+
+        const itens = [];
+
+        document.querySelectorAll('#listaMedicamentosReceita .form-grid').forEach(linha => {
+            const medicamento = linha.querySelector('.medicamento-select')?.value;
+            const quantidade = parseInt(linha.querySelector('.quantidade-input')?.value);
+
+            if (medicamento && quantidade > 0) {
+                const estoque = calcularEstoqueMedicamento(medicamento);
+                if (estoque < quantidade) {
+                    throw new Error(`Estoque insuficiente para ${medicamento}`);
+                }
+                itens.push({ medicamento, quantidade });
+            }
+        });
+
+        if (itens.length === 0) {
+            mostrarToast('Adicione pelo menos um medicamento!', 'error');
             return;
         }
-        
-        // Verifica se há estoque suficiente
-        const estoqueDisponivel = calcularEstoqueMedicamento(medicamentoSelecionado);
-        if (estoqueDisponivel < quantidade) {
-            mostrarToast(`Estoque insuficiente! Disponível: ${estoqueDisponivel}`, 'error');
-            return;
-        }
-        
-        // Cria atendimento
+
         const atendimento = {
-            id: gerarId(),
-            data: document.getElementById('dataAtendimento').value,
+            data: dataInput.value,
             nomePaciente: document.getElementById('nomePaciente').value,
+            rg: document.getElementById('rg').value || '',
+            cartaoSus: document.getElementById('cartaoSus').value || '',
+            contato: document.getElementById('contato').value || '',
             endereco: document.getElementById('endereco').value,
             bairro: document.getElementById('bairro').value,
-            contato: document.getElementById('contato').value,
-            medicamento: medicamentoSelecionado,
-            quantidade: quantidade
+            itens,
+            criadoEm: new Date()
         };
-        
-        // Adiciona atendimento
-        state.atendimentos.push(atendimento);
-        
-        // Registra saída automaticamente
-        registrarSaida(atendimento);
-        
-        // Salva e atualiza
-        salvarDados();
-        form.reset();
-        dataInput.value = new Date().toISOString().split('T')[0];
-        carregarTabelaAtendimentos();
-        carregarSelectMedicamentos();
-        
-        mostrarToast('Atendimento registrado com sucesso!', 'success');
+
+        try {
+            // 🔥 SALVA ATENDIMENTO
+            const ref = await addDoc(collection(db, 'atendimentos'), atendimento);
+            state.atendimentos.push({ id: ref.id, ...atendimento });
+
+            // 🔥 REGISTRA SAÍDAS
+            for (const item of itens) {
+                await registrarSaida({
+                    data: atendimento.data,
+                    nomePaciente: atendimento.nomePaciente,
+                    medicamento: item.medicamento,
+                    quantidade: item.quantidade
+                });
+            }
+
+            form.reset();
+            dataInput.value = new Date().toISOString().split('T')[0];
+            document.getElementById('listaMedicamentosReceita').innerHTML = '';
+
+            carregarTabelaSaidas();
+            carregarTabelaEstoque();
+            atualizarCardsEstoque();
+
+            mostrarToast('Atendimento salvo com sucesso!', 'success');
+
+        } catch (err) {
+            console.error(err);
+            mostrarToast(err.message || 'Erro ao salvar atendimento', 'error');
+        }
     });
 }
 
-function registrarSaida(atendimento) {
-    // Busca o lote mais antigo do medicamento
-    const lotes = state.medicamentos
-        .filter(m => m.descricao === atendimento.medicamento)
-        .sort((a, b) => new Date(a.dataValidade) - new Date(b.dataValidade));
-    
-    const lote = lotes.length > 0 ? lotes[0].lote : 'N/A';
-    
+
+async function registrarSaida({ data, nomePaciente, medicamento, quantidade }) {
     const saida = {
-        id: gerarId(),
-        data: atendimento.data,
-        medicamento: atendimento.medicamento,
-        lote: lote,
-        quantidade: atendimento.quantidade,
-        referencia: `${atendimento.nomePaciente} - ${formatarData(atendimento.data)}`
+        data,
+        medicamento,
+        quantidade,
+        referencia: `${nomePaciente} - ${formatarData(data)}`
     };
-    
-    state.saidas.push(saida);
+
+    const ref = await addDoc(collection(db, "saidas"), saida);
+    state.saidas.push({ id: ref.id, ...saida });
 }
 
+
+
+
 function carregarSelectMedicamentos() {
-    const select = document.getElementById('medicamentoAtend');
-    const medicamentosUnicos = [...new Set(state.medicamentos.map(m => m.descricao))];
-    
-    select.innerHTML = '<option value="">Selecione um medicamento</option>';
-    
-    medicamentosUnicos.forEach(med => {
-        const estoque = calcularEstoqueMedicamento(med);
+    const selects = document.querySelectorAll('.medicamento-select');
+
+    selects.forEach(select => {
+        select.innerHTML = `
+            <option value="">Medicamento</option>
+            ${gerarOpcoesMedicamentos()}
+        `;
+    });
+}
+
+
+function carregarFiltroAno() {
+    const select = document.getElementById('filtroAno');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Todos</option>';
+
+    const anoAtual = new Date().getFullYear();
+
+    for (let ano = 2026; ano <= anoAtual + 5; ano++) {
+        const option = document.createElement('option');
+        option.value = String(ano);
+        option.textContent = ano;
+        select.appendChild(option);
+    }
+}
+
+
+
+
+
+function carregarFiltroMedicamentos() {
+    const select = document.getElementById('filtroMedicamento');
+    if (!select) return;
+
+    const meds = new Set();
+
+    state.atendimentos.forEach(a => {
+        a.itens.forEach(i => meds.add(i.medicamento));
+    });
+
+    select.innerHTML = '<option value="">Todos</option>';
+
+    [...meds].sort().forEach(med => {
         const option = document.createElement('option');
         option.value = med;
-        option.textContent = `${med} (Estoque: ${estoque})`;
-        if (estoque === 0) {
-            option.disabled = true;
-            option.textContent += ' - SEM ESTOQUE';
-        }
+        option.textContent = med;
         select.appendChild(option);
     });
 }
 
-function carregarTabelaAtendimentos() {
-    const tbody = document.getElementById('tabelaAtendimentos');
-    tbody.innerHTML = '';
-    
-    if (state.atendimentos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhum atendimento registrado</td></tr>';
-        return;
-    }
-    
-    // Ordena por data mais recente
-    const atendimentosOrdenados = [...state.atendimentos].sort((a, b) => 
-        new Date(b.data) - new Date(a.data)
-    );
-    
-    atendimentosOrdenados.forEach(atend => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${formatarData(atend.data)}</td>
-            <td><strong>${atend.nomePaciente}</strong></td>
-            <td>${atend.bairro}</td>
-            <td>${atend.medicamento}</td>
-            <td>${atend.quantidade}</td>
-            <td>
-                <button class="btn btn-danger" onclick="excluirAtendimento('${atend.id}')">
-                    <span class="icon">🗑️</span> Excluir
-                </button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
+
 
 function excluirAtendimento(id) {
     if (confirm('Deseja realmente excluir este atendimento?')) {
         // Remove atendimento
         state.atendimentos = state.atendimentos.filter(a => a.id !== id);
-        
+
         // Remove saída relacionada (pela referência)
         const atendimento = state.atendimentos.find(a => a.id === id);
         if (atendimento) {
             const referencia = `${atendimento.nomePaciente} - ${formatarData(atendimento.data)}`;
             state.saidas = state.saidas.filter(s => s.referencia !== referencia);
         }
-        
-        salvarDados();
+
+
         carregarTabelaAtendimentos();
         mostrarToast('Atendimento excluído com sucesso!', 'success');
     }
@@ -277,55 +344,71 @@ function excluirAtendimento(id) {
 function inicializarFormMedicamentos() {
     const form = document.getElementById('formMedicamentos');
     const dataInput = document.getElementById('dataRecebimento');
-    
-    // Define data atual como padrão
+
     dataInput.value = new Date().toISOString().split('T')[0];
-    
-    form.addEventListener('submit', (e) => {
+
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         const quantidade = parseInt(document.getElementById('quantidadeRecebida').value);
-        
+
         if (quantidade <= 0) {
             mostrarToast('Quantidade deve ser maior que zero!', 'error');
             return;
         }
-        
+
         const medicamento = {
-            id: gerarId(),
             codigo: document.getElementById('codigoMed').value,
             descricao: document.getElementById('descricaoMed').value,
             dataRecebimento: document.getElementById('dataRecebimento').value,
             lote: document.getElementById('lote').value,
             dataValidade: document.getElementById('dataValidade').value,
-            quantidade: quantidade
+            quantidade: quantidade,
+            criadoEm: new Date()
         };
-        
-        state.medicamentos.push(medicamento);
-        salvarDados();
-        form.reset();
-        dataInput.value = new Date().toISOString().split('T')[0];
-        carregarTabelaMedicamentos();
-        carregarSelectMedicamentos();
-        
-        mostrarToast('Medicamento cadastrado com sucesso!', 'success');
+
+        try {
+            // 🔥 SALVA NO FIRESTORE
+            const ref = await addDoc(
+                collection(db, 'medicamentos'),
+                medicamento
+            );
+
+            // 🔥 SINCRONIZA STATE
+            state.medicamentos.push({ id: ref.id, ...medicamento });
+
+            form.reset();
+            dataInput.value = new Date().toISOString().split('T')[0];
+
+            carregarTabelaMedicamentos();
+            carregarSelectMedicamentos();
+            atualizarCardsEstoque();
+
+            mostrarToast('Medicamento salvo no Firestore!', 'success');
+
+        } catch (error) {
+            console.error(error);
+            mostrarToast('Erro ao salvar no banco', 'error');
+        }
     });
 }
 
+
 function carregarTabelaMedicamentos() {
     const tbody = document.getElementById('tabelaMedicamentos');
+    if (!tbody) return; // ⛔ proteção TOTAL
+
     tbody.innerHTML = '';
-    
+
     if (state.medicamentos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhum medicamento cadastrado</td></tr>';
         return;
     }
-    
-    // Ordena por data de recebimento mais recente
-    const medicamentosOrdenados = [...state.medicamentos].sort((a, b) => 
+
+    const medicamentosOrdenados = [...state.medicamentos].sort((a, b) =>
         new Date(b.dataRecebimento) - new Date(a.dataRecebimento)
     );
-    
+
     medicamentosOrdenados.forEach(med => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -336,7 +419,7 @@ function carregarTabelaMedicamentos() {
             <td>${med.quantidade}</td>
             <td>
                 <button class="btn btn-danger" onclick="excluirMedicamento('${med.id}')">
-                    <span class="icon">🗑️</span> Excluir
+                    🗑️ Excluir
                 </button>
             </td>
         `;
@@ -347,7 +430,7 @@ function carregarTabelaMedicamentos() {
 function excluirMedicamento(id) {
     if (confirm('Deseja realmente excluir este medicamento?')) {
         state.medicamentos = state.medicamentos.filter(m => m.id !== id);
-        salvarDados();
+
         carregarTabelaMedicamentos();
         carregarSelectMedicamentos();
         mostrarToast('Medicamento excluído com sucesso!', 'success');
@@ -361,26 +444,32 @@ function excluirMedicamento(id) {
 function carregarTabelaSaidas() {
     const tbody = document.getElementById('tabelaSaidas');
     tbody.innerHTML = '';
-    
+
     if (state.saidas.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhuma saída registrada</td></tr>';
         return;
     }
-    
+
     // Ordena por data mais recente
-    const saidasOrdenadas = [...state.saidas].sort((a, b) => 
+    const saidasOrdenadas = [...state.saidas].sort((a, b) =>
         new Date(b.data) - new Date(a.data)
     );
-    
+
     saidasOrdenadas.forEach(saida => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${formatarData(saida.data)}</td>
-            <td><strong>${saida.medicamento}</strong></td>
-            <td>${saida.lote}</td>
-            <td>${saida.quantidade}</td>
-            <td>${saida.referencia}</td>
-        `;
+    <td>${formatarData(saida.data)}</td>
+    <td><strong>${saida.medicamento}</strong></td>
+    <td>${saida.lote}</td>
+    <td>${saida.quantidade}</td>
+    <td>${saida.referencia}</td>
+    <td>
+        <button class="btn btn-danger" onclick="excluirSaida('${saida.id}')">
+            <span class="icon">🗑️</span>
+        </button>
+    </td>
+`;
+
         tbody.appendChild(tr);
     });
 }
@@ -393,11 +482,11 @@ function calcularEstoqueMedicamento(descricao) {
     const totalRecebido = state.medicamentos
         .filter(m => m.descricao === descricao)
         .reduce((sum, m) => sum + m.quantidade, 0);
-    
+
     const totalDistribuido = state.saidas
         .filter(s => s.medicamento === descricao)
         .reduce((sum, s) => sum + s.quantidade, 0);
-    
+
     return totalRecebido - totalDistribuido;
 }
 
@@ -405,34 +494,34 @@ function obterValidadeMaisProxima(descricao) {
     const medicamentos = state.medicamentos
         .filter(m => m.descricao === descricao)
         .sort((a, b) => new Date(a.dataValidade) - new Date(b.dataValidade));
-    
+
     return medicamentos.length > 0 ? medicamentos[0].dataValidade : null;
 }
 
 function carregarTabelaEstoque() {
     const tbody = document.getElementById('tabelaEstoque');
     tbody.innerHTML = '';
-    
+
     const medicamentosUnicos = [...new Set(state.medicamentos.map(m => m.descricao))];
-    
+
     if (medicamentosUnicos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhum medicamento em estoque</td></tr>';
         return;
     }
-    
+
     medicamentosUnicos.forEach(med => {
         const totalRecebido = state.medicamentos
             .filter(m => m.descricao === med)
             .reduce((sum, m) => sum + m.quantidade, 0);
-        
+
         const totalDistribuido = state.saidas
             .filter(s => s.medicamento === med)
             .reduce((sum, s) => sum + s.quantidade, 0);
-        
+
         const saldo = totalRecebido - totalDistribuido;
         const validadeProxima = obterValidadeMaisProxima(med);
         const diasVencer = validadeProxima ? diasAteVencimento(validadeProxima) : null;
-        
+
         // Define status
         let statusBadge = '';
         if (saldo === 0) {
@@ -444,35 +533,42 @@ function carregarTabelaEstoque() {
         } else {
             statusBadge = '<span class="badge badge-success">OK</span>';
         }
-        
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${med}</strong></td>
-            <td>${totalRecebido}</td>
-            <td>${totalDistribuido}</td>
-            <td><strong>${saldo}</strong></td>
-            <td>${formatarData(validadeProxima)}</td>
-            <td>${statusBadge}</td>
-        `;
+  <td><strong>${med}</strong></td>
+  <td>${totalRecebido}</td>
+  <td>${totalDistribuido}</td>
+  <td><strong>${saldo}</strong></td>
+  <td>${formatarData(validadeProxima)}</td>
+  <td>${statusBadge}</td>
+  <td>
+    <button class="btn btn-danger"
+      onclick="excluirMedicamentoEstoque('${med}')">
+      🗑️ Excluir
+    </button>
+  </td>
+`;
+
         tbody.appendChild(tr);
     });
 }
 
 function atualizarCardsEstoque() {
     const medicamentosUnicos = [...new Set(state.medicamentos.map(m => m.descricao))];
-    
+
     let totalEstoque = 0;
     let estoqueBaixo = 0;
     let proximosVencer = 0;
-    
+
     medicamentosUnicos.forEach(med => {
         const saldo = calcularEstoqueMedicamento(med);
         totalEstoque += saldo;
-        
+
         if (saldo > 0 && saldo < CONFIG.ESTOQUE_BAIXO) {
             estoqueBaixo++;
         }
-        
+
         const validadeProxima = obterValidadeMaisProxima(med);
         if (validadeProxima) {
             const dias = diasAteVencimento(validadeProxima);
@@ -481,7 +577,7 @@ function atualizarCardsEstoque() {
             }
         }
     });
-    
+
     document.getElementById('totalEstoque').textContent = totalEstoque;
     document.getElementById('estoqueBaixo').textContent = estoqueBaixo;
     document.getElementById('proximosVencer').textContent = proximosVencer;
@@ -502,24 +598,24 @@ function carregarRelatorios() {
 function carregarTabelaBairros() {
     const tbody = document.getElementById('tabelaBairros');
     tbody.innerHTML = '';
-    
+
     // Conta atendimentos por bairro
     const bairrosConta = {};
     state.atendimentos.forEach(atend => {
         bairrosConta[atend.bairro] = (bairrosConta[atend.bairro] || 0) + 1;
     });
-    
+
     const totalAtendimentos = state.atendimentos.length;
-    
+
     if (totalAtendimentos === 0) {
         tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Nenhum dado disponível</td></tr>';
         return;
     }
-    
+
     // Ordena por quantidade
     const bairrosOrdenados = Object.entries(bairrosConta)
         .sort((a, b) => b[1] - a[1]);
-    
+
     bairrosOrdenados.forEach(([bairro, total]) => {
         const percentual = ((total / totalAtendimentos) * 100).toFixed(1);
         const tr = document.createElement('tr');
@@ -532,27 +628,65 @@ function carregarTabelaBairros() {
     });
 }
 
+async function excluirMedicamentoEstoque(descricao) {
+    if (!confirm(`Deseja excluir TODO o estoque do medicamento:\n${descricao}?`)) {
+        return;
+    }
+
+    try {
+        // 🔥 remove TODAS as entradas desse medicamento
+        const meds = state.medicamentos.filter(m => m.descricao === descricao);
+
+        for (const med of meds) {
+            await deleteDoc(doc(db, 'medicamentos', med.id));
+        }
+
+        // 🔥 remove saídas relacionadas
+        const saidas = state.saidas.filter(s => s.medicamento === descricao);
+
+        for (const saida of saidas) {
+            await deleteDoc(doc(db, 'saidas', saida.id));
+        }
+
+        // 🔥 atualiza state
+        state.medicamentos = state.medicamentos.filter(m => m.descricao !== descricao);
+        state.saidas = state.saidas.filter(s => s.medicamento !== descricao);
+
+        carregarTabelaEstoque();
+        carregarTabelaMedicamentos();
+        carregarTabelaSaidas();
+        atualizarCardsEstoque();
+
+        mostrarToast('Medicamento excluído do estoque com sucesso!', 'success');
+
+    } catch (err) {
+        console.error(err);
+        mostrarToast('Erro ao excluir medicamento do estoque', 'error');
+    }
+}
+
+
 function carregarTabelaMedicamentosRelatorio() {
     const tbody = document.getElementById('tabelaMedicamentosRelatorio');
     tbody.innerHTML = '';
-    
+
     // Conta medicamentos distribuídos
     const medicamentosConta = {};
     state.saidas.forEach(saida => {
         medicamentosConta[saida.medicamento] = (medicamentosConta[saida.medicamento] || 0) + saida.quantidade;
     });
-    
+
     const totalDistribuido = Object.values(medicamentosConta).reduce((a, b) => a + b, 0);
-    
+
     if (totalDistribuido === 0) {
         tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Nenhum dado disponível</td></tr>';
         return;
     }
-    
+
     // Ordena por quantidade
     const medicamentosOrdenados = Object.entries(medicamentosConta)
         .sort((a, b) => b[1] - a[1]);
-    
+
     medicamentosOrdenados.forEach(([medicamento, total]) => {
         const percentual = ((total / totalDistribuido) * 100).toFixed(1);
         const tr = document.createElement('tr');
@@ -567,26 +701,26 @@ function carregarTabelaMedicamentosRelatorio() {
 
 function criarGraficoBairros() {
     const ctx = document.getElementById('chartBairros');
-    
+
     // Destrói gráfico anterior se existir
     if (state.charts.bairros) {
         state.charts.bairros.destroy();
     }
-    
+
     // Prepara dados
     const bairrosConta = {};
     state.atendimentos.forEach(atend => {
         bairrosConta[atend.bairro] = (bairrosConta[atend.bairro] || 0) + 1;
     });
-    
+
     const labels = Object.keys(bairrosConta);
     const data = Object.values(bairrosConta);
-    
+
     if (labels.length === 0) {
         ctx.parentElement.innerHTML = '<p style="text-align: center; padding: 2rem; color: #94a3b8;">Nenhum dado disponível</p>';
         return;
     }
-    
+
     // Cria gráfico
     state.charts.bairros = new Chart(ctx, {
         type: 'pie',
@@ -624,7 +758,7 @@ function criarGraficoBairros() {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             const label = context.label || '';
                             const value = context.parsed || 0;
                             const total = context.dataset.data.reduce((a, b) => a + b, 0);
@@ -638,28 +772,73 @@ function criarGraficoBairros() {
     });
 }
 
+function gerarRelatorioDiario() {
+    const ano = document.getElementById('relatorioAno')?.value;
+    const tbody = document.getElementById('tabelaRelatorioDiario');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    let atendimentos = [...state.atendimentos];
+
+    // 🔎 filtra por ano (opcional)
+    if (ano) {
+        atendimentos = atendimentos.filter(a => a.data.startsWith(ano));
+    }
+
+    // 📅 agrupa por dia
+    const porDia = {};
+
+    atendimentos.forEach(at => {
+        porDia[at.data] = (porDia[at.data] || 0) + 1;
+    });
+
+    const diasOrdenados = Object.entries(porDia)
+        .sort((a, b) => new Date(b[0]) - new Date(a[0]));
+
+    if (diasOrdenados.length === 0) {
+        tbody.innerHTML = `
+      <tr>
+        <td colspan="2" class="empty-state">
+          Nenhum atendimento encontrado
+        </td>
+      </tr>
+    `;
+        return;
+    }
+
+    diasOrdenados.forEach(([data, total]) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+      <td>${formatarData(data)}</td>
+      <td><strong>${total}</strong></td>
+    `;
+        tbody.appendChild(tr);
+    });
+}
+
 function criarGraficoMedicamentos() {
     const ctx = document.getElementById('chartMedicamentos');
-    
+
     // Destrói gráfico anterior se existir
     if (state.charts.medicamentos) {
         state.charts.medicamentos.destroy();
     }
-    
+
     // Prepara dados
     const medicamentosConta = {};
     state.saidas.forEach(saida => {
         medicamentosConta[saida.medicamento] = (medicamentosConta[saida.medicamento] || 0) + saida.quantidade;
     });
-    
+
     const labels = Object.keys(medicamentosConta);
     const data = Object.values(medicamentosConta);
-    
+
     if (labels.length === 0) {
         ctx.parentElement.innerHTML = '<p style="text-align: center; padding: 2rem; color: #94a3b8;">Nenhum dado disponível</p>';
         return;
     }
-    
+
     // Cria gráfico
     state.charts.medicamentos = new Chart(ctx, {
         type: 'bar',
@@ -727,17 +906,335 @@ function criarGraficoMedicamentos() {
 // INICIALIZAÇÃO DO SISTEMA
 // ===================================
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Carrega dados do LocalStorage
-    carregarDados();
-    
-    // Inicializa componentes
+document.addEventListener('DOMContentLoaded', async () => {
+    await carregarDados(); // ⬅️ agora espera Firestore
+
     inicializarNavegacao();
     inicializarFormAtendimento();
     inicializarFormMedicamentos();
-    
-    // Carrega dados iniciais da primeira seção
+    carregarListaMedicamentosCadastro();
+    carregarSelectBairros();
+
+    carregarFiltroAno();           // ✅ agora funciona
     atualizarSecao('atendimento');
-    
+
     console.log('✅ Sistema MedControl inicializado com sucesso!');
 });
+
+;
+
+
+// =========================
+// MENU HAMBÚRGUER
+// =========================
+
+const menuToggle = document.getElementById('menuToggle');
+const navMenu = document.querySelector('.nav-menu');
+
+menuToggle.addEventListener('click', () => {
+    navMenu.classList.toggle('active');
+});
+
+// Fecha o menu ao clicar em um botão
+document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        navMenu.classList.remove('active');
+    });
+});
+
+
+function carregarRelacaoAtendimentos(lista = state.atendimentos) {
+    const tbody = document.getElementById('tabelaRelacaoAtendimentos');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (lista.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="empty-state">
+                    Nenhum atendimento encontrado
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    lista
+        .sort((a, b) => new Date(b.data) - new Date(a.data))
+        .forEach(atend => {
+
+            // 🔥 Junta medicamentos e quantidades
+            const medicamentos = atend.itens
+                .map(i => i.medicamento)
+                .join('<br>');
+
+            const quantidades = atend.itens
+                .map(i => i.quantidade)
+                .join('<br>');
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${formatarData(atend.data)}</td>
+                <td><strong>${atend.nomePaciente}</strong></td>
+                <td>${atend.bairro}</td>
+                <td>${medicamentos}</td>
+                <td>${quantidades}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+}
+
+
+function filtrarRelacaoAtendimentos() {
+    const ano = document.getElementById('filtroAno')?.value;
+    const mes = document.getElementById('filtroMes')?.value;
+    const paciente = document.getElementById('filtroPaciente')?.value.toLowerCase();
+    const medicamento = document.getElementById('filtroMedicamento')?.value.toLowerCase();
+
+    let filtrados = [...state.atendimentos];
+
+    // 📅 Ano
+    if (ano) {
+        filtrados = filtrados.filter(a => a.data.startsWith(ano));
+    }
+
+    // 📅 Mês
+    if (mes) {
+        filtrados = filtrados.filter(a => a.data.split('-')[1] === mes);
+    }
+
+    // 👤 Paciente
+    if (paciente) {
+        filtrados = filtrados.filter(a =>
+            a.nomePaciente.toLowerCase().includes(paciente)
+        );
+    }
+
+    // 💊 Medicamento (INPUT 🔥)
+    if (medicamento) {
+        filtrados = filtrados.filter(a =>
+            a.itens.some(i =>
+                i.medicamento.toLowerCase().includes(medicamento)
+            )
+        );
+    }
+
+    atendimentosFiltrados = filtrados;
+    carregarRelacaoAtendimentos(filtrados);
+
+    // 🔥 mostra botão PDF
+    document.getElementById('btnPdf').style.display =
+        filtrados.length ? 'inline-flex' : 'none';
+
+}
+
+
+function baixarPdfAtendimentos() {
+  if (!atendimentosFiltrados.length) {
+    mostrarToast('Nenhum dado para exportar', 'error');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('l', 'mm', 'a4'); // 🔥 paisagem
+
+  // =============================
+  // TÍTULO
+  // =============================
+  doc.setFontSize(16);
+  doc.text('Relação de Atendimentos', 14, 15);
+
+  doc.setFontSize(10);
+  doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 22);
+
+  // =============================
+  // MONTA LINHAS DA TABELA
+  // =============================
+  const rows = [];
+
+  atendimentosFiltrados.forEach(at => {
+    at.itens.forEach(item => {
+      rows.push([
+        formatarData(at.data),
+        at.nomePaciente,
+        at.bairro,
+        item.medicamento,
+        item.quantidade
+      ]);
+    });
+  });
+
+  // =============================
+  // TABELA
+  // =============================
+  doc.autoTable({
+    startY: 28,
+    head: [[
+      'Data',
+      'Paciente',
+      'Bairro',
+      'Medicamento',
+      'Quantidade'
+    ]],
+    body: rows,
+
+    styles: {
+      fontSize: 9,
+      cellPadding: 3
+    },
+
+    headStyles: {
+      fillColor: [14, 165, 233], // azul institucional
+      textColor: 255,
+      halign: 'center'
+    },
+
+    columnStyles: {
+      0: { cellWidth: 28 },
+      1: { cellWidth: 45 },
+      2: { cellWidth: 35 },
+      3: { cellWidth: 110 },
+      4: { cellWidth: 20, halign: 'center' }
+    },
+
+    alternateRowStyles: {
+      fillColor: [245, 247, 250]
+    },
+
+    didDrawPage: function (data) {
+      const pageCount = doc.internal.getNumberOfPages();
+      doc.setFontSize(9);
+      doc.text(
+        `Página ${pageCount}`,
+        doc.internal.pageSize.getWidth() - 30,
+        doc.internal.pageSize.getHeight() - 10
+      );
+    }
+  });
+
+  // =============================
+  // SALVA
+  // =============================
+  doc.save('relacao-atendimentos.pdf');
+}
+
+
+
+
+
+
+const LISTA_MEDICAMENTOS = [
+    "AMBROXOL XAROPE 15MG/ML 100ML - PEDIÁTRICO",
+    "AMBROXOL XAROPE 50MG/ML",
+    "ACETILCISTEÍNA 40MG/ML ADULTO",
+    "ACETILCISTEÍNA 20MG/ML PEDIÁTRICO",
+    "ACEBROFILINA 50 MG/ML",
+    "ACEBROFILINA 25MG/5ML",
+    "ÁCIDO FÓLICO 5MG",
+    "ÁCIDO ACETILSALICÍLICO 100MG CP",
+    "ÁCIDO ASCÓRBICO 500MG CP",
+    "ACICLOVIR 200MG",
+    "ALBENDAZOL 400MG CP",
+    "AMOXICILINA 500MG CP",
+    "AMOXICILINA 250MG/5ML PÓ/FR",
+    "AMOXICILINA + CLAVULANATO 875MG/125MG CP",
+    "ATENOLOL 25MG CP",
+    "ATENOLOL 50MG CP",
+    "AZITROMICINA 500MG CP",
+    "CAPTOPRIL 25MG",
+    "CEFALEXINA 500MG CP",
+    "DIPIRONA SÓDICA 500MG CP",
+    "IBUPROFENO 600MG",
+    "LOSARTANA 50MG CP",
+    "METFORMINA 500MG CP",
+    "METFORMINA 850MG CP",
+    "OMEPRAZOL 20MG CP",
+    "OMEPRAZOL 40MG CP",
+    "PARACETAMOL 500MG CP",
+    "PARACETAMOL 750MG CP",
+    "SULFATO FERROSO 40MG CP"
+    // 👉 depois podemos completar 100% da lista
+];
+
+
+function carregarListaMedicamentosCadastro() {
+    const select = document.getElementById('descricaoMed');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Selecione o medicamento</option>';
+
+    LISTA_MEDICAMENTOS
+        .sort((a, b) => a.localeCompare(b))
+        .forEach(med => {
+            const option = document.createElement('option');
+            option.value = med;
+            option.textContent = med;
+            select.appendChild(option);
+        });
+}
+
+
+function gerarOpcoesMedicamentos() {
+    const meds = [...new Set(state.medicamentos.map(m => m.descricao))];
+
+    return meds.map(med => {
+        const estoque = calcularEstoqueMedicamento(med);
+        const disabled = estoque <= 0 ? 'disabled' : '';
+        return `<option value="${med}" ${disabled}>
+            ${med} (Estoque: ${estoque})
+        </option>`;
+    }).join('');
+}
+
+function adicionarMedicamentoReceita() {
+    const container = document.getElementById('listaMedicamentosReceita');
+
+    const div = document.createElement('div');
+    div.className = 'form-grid';
+
+    div.innerHTML = `
+        <div class="form-group">
+            <select class="medicamento-select" required>
+                <option value="">Medicamento</option>
+                ${gerarOpcoesMedicamentos()}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <input type="number" class="quantidade-input" min="1" placeholder="Qtd" required>
+        </div>
+
+        <div class="form-group">
+            <button type="button" class="btn btn-danger"
+                onclick="this.closest('.form-grid').remove()">
+                🗑️
+            </button>
+        </div>
+    `;
+
+    container.appendChild(div);
+}
+
+function excluirSaida(id) {
+    if (!confirm('Deseja realmente excluir esta saída?')) return;
+
+    state.saidas = state.saidas.filter(s => s.id !== id);
+    carregarTabelaSaidas();
+    atualizarCardsEstoque();
+
+    mostrarToast('Saída excluída com sucesso!', 'success');
+}
+
+// 🔓 expõe funções para o HTML (onclick)
+window.adicionarMedicamentoReceita = adicionarMedicamentoReceita;
+window.filtrarRelacaoAtendimentos = filtrarRelacaoAtendimentos;
+window.excluirSaida = excluirSaida;
+window.excluirMedicamento = excluirMedicamento;
+window.excluirAtendimento = excluirAtendimento;
+window.excluirMedicamentoEstoque = excluirMedicamentoEstoque;
+window.gerarRelatorioDiario = gerarRelatorioDiario;
+window.baixarPdfAtendimentos = baixarPdfAtendimentos;
+
+
+

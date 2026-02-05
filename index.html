@@ -1,25 +1,27 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Controle de Medicamentos</title>
     <link rel="stylesheet" href="style.css">
 
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <!-- Cabeçalho -->
     <header class="header">
         <div class="container">
             <div class="header-content">
                 <div class="logo">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                        <rect width="40" height="40" rx="8" fill="currentColor" opacity="0.1"/>
-                        <path d="M20 10v20M10 20h20" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                    </svg>
-                    <h1>MedControl</h1>
+                    <img src="img/prefeitura.png" alt="Logo da Prefeitura">
+                    <h1>Almoxarifado Central - Secretaria Municipal de Saúde</h1>
                 </div>
+                <button class="menu-toggle" id="menuToggle">☰</button>
                 <nav class="nav-menu">
                     <button class="nav-btn active" data-section="atendimento">
                         <span class="icon">👥</span>
@@ -41,6 +43,11 @@
                         <span class="icon">📊</span>
                         Relatórios
                     </button>
+                    <button class="nav-btn" data-section="relacao-atendimentos">
+                        <span class="icon">📋</span>
+                        Relação de Atendimentos
+                    </button>
+
                 </nav>
             </div>
         </div>
@@ -58,43 +65,61 @@
                 <div class="card">
                     <form id="formAtendimento" class="form">
                         <div class="form-grid">
+
+                            <!-- Data + Nome -->
                             <div class="form-group">
-                                <label for="dataAtendimento">Data do Atendimento</label>
-                                <input type="date" id="dataAtendimento" required>
+                                <label for="dataAtendimento">Data</label>
+                                <input type="date" id="dataAtendimento">
                             </div>
 
                             <div class="form-group">
-                                <label for="nomePaciente">Nome do Paciente</label>
+                                <label for="nomePaciente">Nome do Paciente *</label>
                                 <input type="text" id="nomePaciente" placeholder="Ex: João Silva" required>
                             </div>
 
-                            <div class="form-group full-width">
-                                <label for="endereco">Endereço</label>
-                                <input type="text" id="endereco" placeholder="Ex: Rua das Flores, 123" required>
+                            <!-- RG + Cartão SUS + Contato -->
+                            <div class="form-group">
+                                <label for="rg">RG</label>
+                                <input type="text" id="rg" placeholder="Opcional">
                             </div>
 
                             <div class="form-group">
-                                <label for="bairro">Bairro</label>
-                                <input type="text" id="bairro" placeholder="Ex: Centro" required>
+                                <label for="cartaoSus">Cartão SUS</label>
+                                <input type="text" id="cartaoSus" placeholder="Opcional">
                             </div>
 
                             <div class="form-group">
                                 <label for="contato">Contato</label>
-                                <input type="tel" id="contato" placeholder="(00) 00000-0000" required>
+                                <input type="tel" id="contato" placeholder="Opcional">
+                            </div>
+
+                            <!-- Endereço + Bairro -->
+                            <div class="form-group">
+                                <label for="endereco">Endereço *</label>
+                                <input type="text" id="endereco" placeholder="Ex: Rua das Flores, 123" required>
                             </div>
 
                             <div class="form-group">
-                                <label for="medicamentoAtend">Medicamento</label>
-                                <select id="medicamentoAtend" required>
-                                    <option value="">Selecione um medicamento</option>
+                                <label for="bairro">Bairro *</label>
+                                <select id="bairro" required>
+                                    <option value="">Selecione</option>
                                 </select>
                             </div>
 
-                            <div class="form-group">
-                                <label for="quantidadeEntregue">Quantidade Entregue</label>
-                                <input type="number" id="quantidadeEntregue" min="1" placeholder="0" required>
+
+                            <!-- Quantidade -->
+                            <div class="form-group full-width">
+                                <label>Medicamentos da Receita</label>
+
+                                <div id="listaMedicamentosReceita"></div>
+
+                                <button type="button" class="btn btn-secondary" onclick="adicionarMedicamentoReceita()">
+                                    ➕ Adicionar medicamento
+                                </button>
                             </div>
+
                         </div>
+
 
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">
@@ -108,9 +133,83 @@
                         </div>
                     </form>
                 </div>
+            </section>
+
+
+
+            <!-- SEÇÃO: RELAÇÃO DE ATENDIMENTOS -->
+            <section id="relacao-atendimentos" class="section">
+                <div class="section-header">
+                    <h2>Relação de Atendimentos</h2>
+                    <p class="subtitle">Consulta geral dos atendimentos registrados no sistema</p>
+                </div>
 
                 <div class="card">
-                    <h3 class="card-title">Atendimentos Recentes</h3>
+
+                    <div class="form-grid">
+
+                        <!-- ANO -->
+                        <div class="form-group">
+                            <label>Ano</label>
+                            <select id="filtroAno">
+                                <option value="">Todos</option>
+                                <option value="2026">2026</option>
+                                <option value="2027">2027</option>
+                                <option value="2028">2028</option>
+                            </select>
+                        </div>
+
+                        <!-- MÊS -->
+                        <div class="form-group">
+                            <label>Mês</label>
+                            <select id="filtroMes">
+                                <option value="">Todos</option>
+                                <option value="01">Jan</option>
+                                <option value="02">Fev</option>
+                                <option value="03">Mar</option>
+                                <option value="04">Abr</option>
+                                <option value="05">Mai</option>
+                                <option value="06">Jun</option>
+                                <option value="07">Jul</option>
+                                <option value="08">Ago</option>
+                                <option value="09">Set</option>
+                                <option value="10">Out</option>
+                                <option value="11">Nov</option>
+                                <option value="12">Dez</option>
+                            </select>
+                        </div>
+
+                        <!-- PACIENTE -->
+                        <div class="form-group">
+                            <label>Paciente</label>
+                            <input type="text" id="filtroPaciente" placeholder="Nome do paciente">
+                        </div>
+
+                        <!-- MEDICAMENTO (INPUT 🔥) -->
+                        <div class="form-group">
+                            <label>Medicamento</label>
+                            <input type="text" id="filtroMedicamento" placeholder="Ex: Amoxicilina">
+                        </div>
+
+
+
+
+
+                        <div class="form-group" style="align-self:end">
+                            <button class="btn btn-primary" onclick="filtrarRelacaoAtendimentos()">
+                                🔍 Filtrar
+                            </button>
+                            <button class="btn btn-secondary" id="btnPdf" style="display:none"
+                                onclick="baixarPdfAtendimentos()">
+                                📄 Baixar PDF
+                            </button>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="card">
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
@@ -120,10 +219,9 @@
                                     <th>Bairro</th>
                                     <th>Medicamento</th>
                                     <th>Quantidade</th>
-                                    <th>Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="tabelaAtendimentos"></tbody>
+                            <tbody id="tabelaRelacaoAtendimentos"></tbody>
                         </table>
                     </div>
                 </div>
@@ -145,9 +243,18 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="descricaoMed">Descrição do Medicamento</label>
-                                <input type="text" id="descricaoMed" placeholder="Ex: Paracetamol 500mg" required>
+                                <label for="descricaoMed">Medicamento</label>
+                                <select id="descricaoMed" required>
+                                    <option value="">Selecione o medicamento</option>
+                                </select>
                             </div>
+
+
+                            <div class="form-group" id="novoMedicamentoGroup" style="display: none;">
+                                <label for="novoMedicamento">Novo Medicamento</label>
+                                <input type="text" id="novoMedicamento" placeholder="Ex: Paracetamol 500mg">
+                            </div>
+
 
                             <div class="form-group">
                                 <label for="dataRecebimento">Data de Recebimento</label>
@@ -182,25 +289,6 @@
                         </div>
                     </form>
                 </div>
-
-                <div class="card">
-                    <h3 class="card-title">Medicamentos Cadastrados</h3>
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Código</th>
-                                    <th>Descrição</th>
-                                    <th>Lote</th>
-                                    <th>Validade</th>
-                                    <th>Quantidade</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabelaMedicamentos"></tbody>
-                        </table>
-                    </div>
-                </div>
             </section>
 
             <!-- SEÇÃO: CONTROLE DE SAÍDAS -->
@@ -220,10 +308,12 @@
                                     <th>Lote</th>
                                     <th>Quantidade</th>
                                     <th>Referência</th>
+                                    <th>Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="tabelaSaidas"></tbody>
                         </table>
+
                     </div>
                 </div>
             </section>
@@ -237,28 +327,32 @@
 
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">📦</div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">📦
+                        </div>
                         <div class="stat-content">
                             <p class="stat-label">Total em Estoque</p>
                             <p class="stat-value" id="totalEstoque">0</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">⚠️</div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">⚠️
+                        </div>
                         <div class="stat-content">
                             <p class="stat-label">Estoque Baixo</p>
                             <p class="stat-value" id="estoqueBaixo">0</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">📅</div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">📅
+                        </div>
                         <div class="stat-content">
                             <p class="stat-label">Próximos do Vencimento</p>
                             <p class="stat-value" id="proximosVencer">0</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">💊</div>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">💊
+                        </div>
                         <div class="stat-content">
                             <p class="stat-label">Tipos Cadastrados</p>
                             <p class="stat-value" id="tiposMedicamentos">0</p>
@@ -277,8 +371,10 @@
                                     <th>Saldo</th>
                                     <th>Validade Próxima</th>
                                     <th>Status</th>
+                                    <th>Ações</th>
                                 </tr>
                             </thead>
+
                             <tbody id="tabelaEstoque"></tbody>
                         </table>
                     </div>
@@ -343,11 +439,28 @@
         </div>
     </main>
 
+    <footer class="footer">
+        <div class="container footer-content">
+            <span>
+                © <span id="year"></span> Secretaria de Eficiência Governamental — <strong>SEMEG</strong>
+            </span>
+            <span class="footer-divider">•</span>
+            <span class="footer-sub">
+                Sistema de Controle de Medicamentos | UBS Penta
+            </span>
+        </div>
+    </footer>
+
     <!-- Toast de Notificação -->
     <div id="toast" class="toast"></div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="script.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <script type="module" src="script.js"></script>
+
+
 </body>
+
 </html>
