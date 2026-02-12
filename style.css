@@ -849,3 +849,28 @@ body {
 }
 
 
+/* ===================================
+   AJUSTE TOM SELECT (ALTURA PADRÃO)
+   =================================== */
+
+.ts-control {
+    padding: var(--spacing-md) !important;
+    border: 2px solid var(--border-color) !important;
+    border-radius: var(--radius-md) !important;
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 0.95rem !important;
+    min-height: 48px; /* 🔥 igual aos outros campos */
+    display: flex;
+    align-items: center;
+}
+
+.ts-control.focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.ts-dropdown {
+    border-radius: var(--radius-md);
+    border: 2px solid var(--border-color);
+    font-family: 'Poppins', sans-serif;
+}

@@ -10,6 +10,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
         rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
 </head>
 
 <body>
@@ -137,96 +138,6 @@
 
 
 
-            <!-- SEÇÃO: RELAÇÃO DE ATENDIMENTOS -->
-            <section id="relacao-atendimentos" class="section">
-                <div class="section-header">
-                    <h2>Relação de Atendimentos</h2>
-                    <p class="subtitle">Consulta geral dos atendimentos registrados no sistema</p>
-                </div>
-
-                <div class="card">
-
-                    <div class="form-grid">
-
-                        <!-- ANO -->
-                        <div class="form-group">
-                            <label>Ano</label>
-                            <select id="filtroAno">
-                                <option value="">Todos</option>
-                                <option value="2026">2026</option>
-                                <option value="2027">2027</option>
-                                <option value="2028">2028</option>
-                            </select>
-                        </div>
-
-                        <!-- MÊS -->
-                        <div class="form-group">
-                            <label>Mês</label>
-                            <select id="filtroMes">
-                                <option value="">Todos</option>
-                                <option value="01">Jan</option>
-                                <option value="02">Fev</option>
-                                <option value="03">Mar</option>
-                                <option value="04">Abr</option>
-                                <option value="05">Mai</option>
-                                <option value="06">Jun</option>
-                                <option value="07">Jul</option>
-                                <option value="08">Ago</option>
-                                <option value="09">Set</option>
-                                <option value="10">Out</option>
-                                <option value="11">Nov</option>
-                                <option value="12">Dez</option>
-                            </select>
-                        </div>
-
-                        <!-- PACIENTE -->
-                        <div class="form-group">
-                            <label>Paciente</label>
-                            <input type="text" id="filtroPaciente" placeholder="Nome do paciente">
-                        </div>
-
-                        <!-- MEDICAMENTO (INPUT 🔥) -->
-                        <div class="form-group">
-                            <label>Medicamento</label>
-                            <input type="text" id="filtroMedicamento" placeholder="Ex: Amoxicilina">
-                        </div>
-
-
-
-
-
-                        <div class="form-group" style="align-self:end">
-                            <button class="btn btn-primary" onclick="filtrarRelacaoAtendimentos()">
-                                🔍 Filtrar
-                            </button>
-                            <button class="btn btn-secondary" id="btnPdf" style="display:none"
-                                onclick="baixarPdfAtendimentos()">
-                                📄 Baixar PDF
-                            </button>
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <div class="card">
-                    <div class="table-container">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Paciente</th>
-                                    <th>Bairro</th>
-                                    <th>Medicamento</th>
-                                    <th>Quantidade</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabelaRelacaoAtendimentos"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
             <!-- SEÇÃO: CADASTRO DE MEDICAMENTOS -->
             <section id="medicamentos" class="section">
                 <div class="section-header">
@@ -245,8 +156,9 @@
                             <div class="form-group">
                                 <label for="descricaoMed">Medicamento</label>
                                 <select id="descricaoMed" required>
-                                    <option value="">Selecione o medicamento</option>
+                                    <option value="">Selecione ou digite o medicamento</option>
                                 </select>
+
                             </div>
 
 
@@ -436,6 +348,96 @@
                     </div>
                 </div>
             </section>
+
+            <!-- SEÇÃO: RELAÇÃO DE ATENDIMENTOS -->
+            <section id="relacao-atendimentos" class="section">
+                <div class="section-header">
+                    <h2>Relação de Atendimentos</h2>
+                    <p class="subtitle">Consulta geral dos atendimentos registrados no sistema</p>
+                </div>
+
+                <div class="card">
+
+                    <div class="form-grid">
+
+                        <!-- ANO -->
+                        <div class="form-group">
+                            <label>Ano</label>
+                            <select id="filtroAno">
+                                <option value="">Todos</option>
+                                <option value="2026">2026</option>
+                                <option value="2027">2027</option>
+                                <option value="2028">2028</option>
+                            </select>
+                        </div>
+
+                        <!-- MÊS -->
+                        <div class="form-group">
+                            <label>Mês</label>
+                            <select id="filtroMes">
+                                <option value="">Todos</option>
+                                <option value="01">Jan</option>
+                                <option value="02">Fev</option>
+                                <option value="03">Mar</option>
+                                <option value="04">Abr</option>
+                                <option value="05">Mai</option>
+                                <option value="06">Jun</option>
+                                <option value="07">Jul</option>
+                                <option value="08">Ago</option>
+                                <option value="09">Set</option>
+                                <option value="10">Out</option>
+                                <option value="11">Nov</option>
+                                <option value="12">Dez</option>
+                            </select>
+                        </div>
+
+                        <!-- PACIENTE -->
+                        <div class="form-group">
+                            <label>Paciente</label>
+                            <input type="text" id="filtroPaciente" placeholder="Nome do paciente">
+                        </div>
+
+                        <!-- MEDICAMENTO (INPUT 🔥) -->
+                        <div class="form-group">
+                            <label>Medicamento</label>
+                            <input type="text" id="filtroMedicamento" placeholder="Ex: Amoxicilina">
+                        </div>
+
+
+
+
+
+                        <div class="form-group" style="align-self:end">
+                            <button class="btn btn-primary" onclick="filtrarRelacaoAtendimentos()">
+                                🔍 Filtrar
+                            </button>
+                            <button class="btn btn-secondary" id="btnPdf" style="display:none"
+                                onclick="baixarPdfAtendimentos()">
+                                📄 Baixar PDF
+                            </button>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Paciente</th>
+                                    <th>Bairro</th>
+                                    <th>Medicamento</th>
+                                    <th>Quantidade</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaRelacaoAtendimentos"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
         </div>
     </main>
 
@@ -457,9 +459,12 @@
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="module" src="script.js"></script>
 
+
+    <img id="logoPrefeitura" src="img/prefeitura.png" style="display:none;">
 
 </body>
 
