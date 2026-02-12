@@ -192,6 +192,7 @@ function atualizarSecao(secao) {
 // ===================================
 
 function inicializarFormAtendimento() {
+
     const form = document.getElementById('formAtendimento');
     const dataInput = document.getElementById('dataAtendimento');
 
@@ -201,19 +202,39 @@ function inicializarFormAtendimento() {
         e.preventDefault();
 
         const itens = [];
+        let erroEstoque = false;
 
-        document.querySelectorAll('#listaMedicamentosReceita .form-grid').forEach(linha => {
+        const linhas = document.querySelectorAll('#listaMedicamentosReceita .form-grid');
+
+        for (const linha of linhas) {
+
             const medicamento = linha.querySelector('.medicamento-select')?.value;
             const quantidade = parseInt(linha.querySelector('.quantidade-input')?.value);
 
             if (medicamento && quantidade > 0) {
+
                 const estoque = calcularEstoqueMedicamento(medicamento);
+
                 if (estoque < quantidade) {
-                    throw new Error(`Estoque insuficiente para ${medicamento}`);
+
+                    mostrarToast(
+                        `⚠ Estoque insuficiente para ${medicamento}.
+Disponível: ${estoque}`,
+                        'error'
+                    );
+
+                    // 🔥 destaca visualmente
+                    linha.querySelector('.quantidade-input').style.border = "2px solid red";
+
+                    erroEstoque = true;
+                    break; // PARA TUDO
                 }
+
                 itens.push({ medicamento, quantidade });
             }
-        });
+        }
+
+        if (erroEstoque) return;
 
         if (itens.length === 0) {
             mostrarToast('Adicione pelo menos um medicamento!', 'error');
@@ -233,11 +254,10 @@ function inicializarFormAtendimento() {
         };
 
         try {
-            // 🔥 SALVA ATENDIMENTO
+
             const ref = await addDoc(collection(db, 'atendimentos'), atendimento);
             state.atendimentos.push({ id: ref.id, ...atendimento });
 
-            // 🔥 REGISTRA SAÍDAS
             for (const item of itens) {
                 await registrarSaida({
                     data: atendimento.data,
@@ -259,10 +279,11 @@ function inicializarFormAtendimento() {
 
         } catch (err) {
             console.error(err);
-            mostrarToast(err.message || 'Erro ao salvar atendimento', 'error');
+            mostrarToast('Erro ao salvar atendimento', 'error');
         }
     });
 }
+
 
 
 async function registrarSaida({ data, nomePaciente, medicamento, quantidade }) {

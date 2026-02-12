@@ -577,6 +577,30 @@ body {
     background: var(--warning);
 }
 
+.logo-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.logo-text h1 {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.logo-text .orgao {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.logo-text .desenvolvido {
+    font-size: 0.75rem;
+    color: var(--primary);
+    font-weight: 500;
+}
+
+
+
 /* ===================================
    RESPONSIVIDADE
    =================================== */
@@ -874,3 +898,4 @@ body {
     border: 2px solid var(--border-color);
     font-family: 'Poppins', sans-serif;
 }
+
