@@ -545,57 +545,62 @@ function carregarTabelaEstoque() {
     const tbody = document.getElementById('tabelaEstoque');
     tbody.innerHTML = '';
 
-    const medicamentosUnicos = [...new Set(state.medicamentos.map(m => m.descricao))];
-
-    if (medicamentosUnicos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhum medicamento em estoque</td></tr>';
+    if (state.medicamentos.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="empty-state">
+                    Nenhum medicamento em estoque
+                </td>
+            </tr>
+        `;
         return;
     }
 
-    medicamentosUnicos.forEach(med => {
-        const totalRecebido = state.medicamentos
-            .filter(m => m.descricao === med)
-            .reduce((sum, m) => sum + m.quantidade, 0);
+    // 🔥 Ordena por medicamento e validade
+    const medicamentosOrdenados = [...state.medicamentos].sort((a, b) => {
+        if (a.descricao === b.descricao) {
+            return new Date(a.dataValidade) - new Date(b.dataValidade);
+        }
+        return a.descricao.localeCompare(b.descricao);
+    });
 
-        const totalDistribuido = state.saidas
-            .filter(s => s.medicamento === med)
+    medicamentosOrdenados.forEach(med => {
+
+        const totalDistribuidoLote = state.saidas
+            .filter(s => s.medicamento === med.descricao && s.lote === med.lote)
             .reduce((sum, s) => sum + s.quantidade, 0);
 
-        const saldo = totalRecebido - totalDistribuido;
-        const validadeProxima = obterValidadeMaisProxima(med);
-        const diasVencer = validadeProxima ? diasAteVencimento(validadeProxima) : null;
+        const saldo = med.quantidade - totalDistribuidoLote;
+        const diasVencer = diasAteVencimento(med.dataValidade);
 
-        // Define status
         let statusBadge = '';
-        if (saldo === 0) {
+
+        if (saldo <= 0) {
             statusBadge = '<span class="badge badge-danger">SEM ESTOQUE</span>';
         } else if (saldo < CONFIG.ESTOQUE_BAIXO) {
             statusBadge = '<span class="badge badge-warning">ESTOQUE BAIXO</span>';
-        } else if (diasVencer !== null && diasVencer < CONFIG.DIAS_VENCIMENTO) {
+        } else if (diasVencer < CONFIG.DIAS_VENCIMENTO) {
             statusBadge = '<span class="badge badge-warning">PRÓX. VENCIMENTO</span>';
         } else {
             statusBadge = '<span class="badge badge-success">OK</span>';
         }
 
         const tr = document.createElement('tr');
+
         tr.innerHTML = `
-  <td><strong>${med}</strong></td>
-  <td>${totalRecebido}</td>
-  <td>${totalDistribuido}</td>
-  <td><strong>${saldo}</strong></td>
-  <td>${formatarData(validadeProxima)}</td>
-  <td>${statusBadge}</td>
-  <td>
-    <button class="btn btn-danger"
-      onclick="excluirMedicamentoEstoque('${med}')">
-      🗑️ Excluir
-    </button>
-  </td>
-`;
+            <td><strong>${med.descricao}</strong></td>
+            <td>${med.lote}</td>
+            <td>${formatarData(med.dataValidade)}</td>
+            <td>${med.quantidade}</td>
+            <td>${totalDistribuidoLote}</td>
+            <td><strong>${saldo}</strong></td>
+            <td>${statusBadge}</td>
+        `;
 
         tbody.appendChild(tr);
     });
 }
+
 
 function atualizarCardsEstoque() {
     const medicamentosUnicos = [...new Set(state.medicamentos.map(m => m.descricao))];
