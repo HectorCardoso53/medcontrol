@@ -198,90 +198,119 @@ function inicializarFormAtendimento() {
 
     dataInput.value = new Date().toISOString().split('T')[0];
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+   form.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-        const itens = [];
-        let erroEstoque = false;
+    const itens = [];
+    let erroEstoque = false;
 
-        const linhas = document.querySelectorAll('#listaMedicamentosReceita .form-grid');
+    const linhas = document.querySelectorAll('#listaMedicamentosReceita .form-grid');
 
-        for (const linha of linhas) {
+    for (const linha of linhas) {
 
-            const medicamento = linha.querySelector('.medicamento-select')?.value;
-            const quantidade = parseInt(linha.querySelector('.quantidade-input')?.value);
+        const medicamento = linha.querySelector('.medicamento-select')?.value;
+        const lote = linha.querySelector('.lote-select')?.value;
+        const quantidade = parseInt(linha.querySelector('.quantidade-input')?.value);
 
-            if (medicamento && quantidade > 0) {
-
-                const estoque = calcularEstoqueMedicamento(medicamento);
-
-                if (estoque < quantidade) {
-
-                    mostrarToast(
-                        `⚠ Estoque insuficiente para ${medicamento}.
-Disponível: ${estoque}`,
-                        'error'
-                    );
-
-                    // 🔥 destaca visualmente
-                    linha.querySelector('.quantidade-input').style.border = "2px solid red";
-
-                    erroEstoque = true;
-                    break; // PARA TUDO
-                }
-
-                itens.push({ medicamento, quantidade });
-            }
+        if (!medicamento || !lote || !quantidade || quantidade <= 0) {
+            mostrarToast('Preencha medicamento, lote e quantidade corretamente.', 'error');
+            erroEstoque = true;
+            break;
         }
 
-        if (erroEstoque) return;
+        // 🔎 Busca o lote específico no state
+        const medInfo = state.medicamentos.find(m =>
+            m.descricao === medicamento && m.lote === lote
+        );
 
-        if (itens.length === 0) {
-            mostrarToast('Adicione pelo menos um medicamento!', 'error');
-            return;
+        if (!medInfo) {
+            mostrarToast(`Lote ${lote} não encontrado para ${medicamento}`, 'error');
+            erroEstoque = true;
+            break;
         }
 
-        const atendimento = {
-            data: dataInput.value,
-            nomePaciente: document.getElementById('nomePaciente').value,
-            rg: document.getElementById('rg').value || '',
-            cartaoSus: document.getElementById('cartaoSus').value || '',
-            contato: document.getElementById('contato').value || '',
-            endereco: document.getElementById('endereco').value,
-            bairro: document.getElementById('bairro').value,
-            itens,
-            criadoEm: new Date()
-        };
+        // 🔥 Calcula quanto já saiu DESSE LOTE
+        const totalDistribuido = state.saidas
+            .filter(s => s.medicamento === medicamento && s.lote === lote)
+            .reduce((sum, s) => sum + s.quantidade, 0);
 
-        try {
+        const saldoDisponivel = medInfo.quantidade - totalDistribuido;
 
-            const ref = await addDoc(collection(db, 'atendimentos'), atendimento);
-            state.atendimentos.push({ id: ref.id, ...atendimento });
+        if (saldoDisponivel < quantidade) {
 
-            for (const item of itens) {
-                await registrarSaida({
-                    data: atendimento.data,
-                    nomePaciente: atendimento.nomePaciente,
-                    medicamento: item.medicamento,
-                    quantidade: item.quantidade
-                });
-            }
+            mostrarToast(
+                `⚠ Estoque insuficiente no lote ${lote}.
+Disponível: ${saldoDisponivel}`,
+                'error'
+            );
 
-            form.reset();
-            dataInput.value = new Date().toISOString().split('T')[0];
-            document.getElementById('listaMedicamentosReceita').innerHTML = '';
+            linha.querySelector('.quantidade-input').style.border = "2px solid red";
 
-            carregarTabelaSaidas();
-            carregarTabelaEstoque();
-            atualizarCardsEstoque();
-
-            mostrarToast('Atendimento salvo com sucesso!', 'success');
-
-        } catch (err) {
-            console.error(err);
-            mostrarToast('Erro ao salvar atendimento', 'error');
+            erroEstoque = true;
+            break;
         }
-    });
+
+        itens.push({ medicamento, lote, quantidade });
+    }
+
+    if (erroEstoque) return;
+
+    if (itens.length === 0) {
+        mostrarToast('Adicione pelo menos um medicamento!', 'error');
+        return;
+    }
+
+    const atendimento = {
+        data: dataInput.value,
+        nomePaciente: document.getElementById('nomePaciente').value,
+        rg: document.getElementById('rg').value || '',
+        cartaoSus: document.getElementById('cartaoSus').value || '',
+        contato: document.getElementById('contato').value || '',
+        endereco: document.getElementById('endereco').value,
+        bairro: document.getElementById('bairro').value,
+        itens,
+        criadoEm: new Date()
+    };
+
+    try {
+
+        // 🔥 Salva atendimento
+        const ref = await addDoc(collection(db, 'atendimentos'), atendimento);
+        state.atendimentos.push({ id: ref.id, ...atendimento });
+
+        // 🔥 Registra saídas POR LOTE
+        for (const item of itens) {
+
+            const saida = {
+                data: atendimento.data,
+                medicamento: item.medicamento,
+                lote: item.lote,
+                quantidade: item.quantidade,
+                referencia: atendimento.nomePaciente
+            };
+
+            const saidaRef = await addDoc(collection(db, "saidas"), saida);
+
+            state.saidas.push({ id: saidaRef.id, ...saida });
+        }
+
+        // 🔄 Reset visual
+        form.reset();
+        dataInput.value = new Date().toISOString().split('T')[0];
+        document.getElementById('listaMedicamentosReceita').innerHTML = '';
+
+        carregarTabelaSaidas();
+        carregarTabelaEstoque();
+        atualizarCardsEstoque();
+
+        mostrarToast('Atendimento salvo com sucesso!', 'success');
+
+    } catch (err) {
+        console.error(err);
+        mostrarToast('Erro ao salvar atendimento', 'error');
+    }
+});
+
 }
 
 
@@ -522,16 +551,35 @@ function carregarTabelaSaidas() {
 // ===================================
 
 function calcularEstoqueMedicamento(descricao) {
-    const totalRecebido = state.medicamentos
-        .filter(m => m.descricao === descricao)
-        .reduce((sum, m) => sum + m.quantidade, 0);
 
-    const totalDistribuido = state.saidas
-        .filter(s => s.medicamento === descricao)
-        .reduce((sum, s) => sum + s.quantidade, 0);
+    // 🔎 pega todos os lotes desse medicamento
+    const lotes = state.medicamentos
+        .filter(m => m.descricao === descricao);
 
-    return totalRecebido - totalDistribuido;
+    let totalEstoque = 0;
+
+    lotes.forEach(lote => {
+
+        // 🔥 calcula quanto já saiu DESSE LOTE
+        const totalDistribuido = state.saidas
+            .filter(s => 
+                s.medicamento === descricao &&
+                s.lote === lote.lote
+            )
+            .reduce((sum, s) => sum + s.quantidade, 0);
+
+        const saldoLote = lote.quantidade - totalDistribuido;
+
+        // 🔒 impede estoque negativo
+        if (saldoLote > 0) {
+            totalEstoque += saldoLote;
+        }
+    });
+
+    return totalEstoque;
 }
+
+
 
 function obterValidadeMaisProxima(descricao) {
     const medicamentos = state.medicamentos
@@ -1540,9 +1588,15 @@ function adicionarMedicamentoReceita() {
 
     div.innerHTML = `
         <div class="form-group">
-            <select class="medicamento-select" required>
+            <select class="medicamento-select" required onchange="atualizarLotes(this)">
                 <option value="">Medicamento</option>
                 ${gerarOpcoesMedicamentos()}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <select class="lote-select" required>
+                <option value="">Lote</option>
             </select>
         </div>
 
@@ -1560,6 +1614,45 @@ function adicionarMedicamentoReceita() {
 
     container.appendChild(div);
 }
+
+
+function atualizarLotes(selectMedicamento) {
+
+    const medicamento = selectMedicamento.value;
+    const linha = selectMedicamento.closest('.form-grid');
+    const selectLote = linha.querySelector('.lote-select');
+
+    selectLote.innerHTML = '<option value="">Selecione o lote</option>';
+
+    if (!medicamento) return;
+
+    const lotes = state.medicamentos
+        .filter(m => m.descricao === medicamento);
+
+    lotes.forEach(med => {
+
+        const totalDistribuido = state.saidas
+            .filter(s => s.medicamento === med.descricao && s.lote === med.lote)
+            .reduce((sum, s) => sum + s.quantidade, 0);
+
+        const saldo = med.quantidade - totalDistribuido;
+
+        if (saldo > 0) {
+
+            const option = document.createElement('option');
+            option.value = med.lote;
+            option.textContent =
+                `Lote ${med.lote} (Saldo: ${saldo} | Val: ${formatarData(med.dataValidade)})`;
+
+            selectLote.appendChild(option);
+        }
+    });
+
+    if (selectLote.options.length === 1) {
+        mostrarToast('Nenhum lote disponível para este medicamento', 'warning');
+    }
+}
+
 
 function ativarBuscaSelectBairro() {
     new TomSelect("#bairro", {
@@ -1592,6 +1685,7 @@ window.excluirAtendimento = excluirAtendimento;
 window.excluirMedicamentoEstoque = excluirMedicamentoEstoque;
 window.gerarRelatorioDiario = gerarRelatorioDiario;
 window.baixarPdfAtendimentos = baixarPdfAtendimentos;
+window.atualizarLotes = atualizarLotes;
 
 
 
