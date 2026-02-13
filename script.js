@@ -370,7 +370,6 @@ function carregarFiltroAno() {
   }
 }
 
-
 function carregarFiltroMedicamentos() {
   const select = document.getElementById("filtroMedicamento");
   if (!select) return;
@@ -799,11 +798,15 @@ function carregarRelatorios() {
   }
 
   atualizarCardsRelatorio(atendimentos, saidas);
-  criarGraficoAtendimentosPorNome(atendimentos);
 
+  criarGraficoAtendimentosPorNome(atendimentos);
   criarGraficoMedicamentos(saidas);
-  criarGraficoBairrosFiltrado(atendimentos); // 🔥 NOVO
+  criarGraficoBairrosFiltrado(atendimentos);
+
+  // 🔥 AGORA SIM vai aparecer
+  criarGraficoEvolucao(atendimentos);
 }
+
 
 function carregarTabelaBairros() {
   const tbody = document.getElementById("tabelaBairros");
@@ -872,6 +875,9 @@ async function excluirMedicamentoEstoque(descricao) {
     carregarTabelaMedicamentos();
     carregarTabelaSaidas();
     atualizarCardsEstoque();
+    criarGraficoEvolucao(state.atendimentos);
+
+
 
     mostrarToast("Medicamento excluído do estoque com sucesso!", "success");
   } catch (err) {
@@ -1003,69 +1009,74 @@ function criarGraficoAtendimentosPorNome(atendimentos) {
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
 
   if (state.charts.atendimentosNome) {
     state.charts.atendimentosNome.destroy();
   }
 
+  const limite = parseInt(
+    document.getElementById("filtroTopAtendimentos")?.value || 15
+  );
+
   const pacientesConta = {};
 
   atendimentos.forEach((a) => {
-    pacientesConta[a.nomePaciente] = (pacientesConta[a.nomePaciente] || 0) + 1;
+    pacientesConta[a.nomePaciente] =
+      (pacientesConta[a.nomePaciente] || 0) + 1;
   });
 
   const ordenado = Object.entries(pacientesConta)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 15);
+    .slice(0, limite);
 
-  const labels = ordenado.map((item, index) => `#${index + 1} - ${item[0]}`);
+  const labels = ordenado.map(item => item[0]);
+  const data = ordenado.map(item => item[1]);
 
-  const data = ordenado.map((item) => item[1]);
-
-  // 🔥 Se não houver dados → apenas limpa o gráfico
-  if (!labels.length) {
-    state.charts.atendimentosNome = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: [],
-        datasets: [],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-      },
-    });
-    return;
-  }
+  const cores = ordenado.map((_, index) => {
+    if (index === 0) return "#f59e0b";
+    if (index === 1) return "#94a3b8";
+    if (index === 2) return "#f97316";
+    return "#0ea5e9";
+  });
 
   state.charts.atendimentosNome = new Chart(ctx, {
     type: "bar",
     data: {
       labels,
-      datasets: [
-        {
-          label: "Total de Atendimentos",
-          data,
-          backgroundColor: "#0ea5e9",
-          borderRadius: 6,
-        },
-      ],
+      datasets: [{
+        data,
+        backgroundColor: cores,
+        borderRadius: 10,
+        barThickness: 35
+      }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      indexAxis: "y",
-    },
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          ticks: { maxRotation: 45, minRotation: 45 }
+        },
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
   });
 }
+
+
+
+
 
 function criarGraficoBairrosFiltrado(atendimentos) {
   const canvas = document.getElementById("chartBairros");
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
 
   if (state.charts.bairros) {
     state.charts.bairros.destroy();
@@ -1080,55 +1091,37 @@ function criarGraficoBairrosFiltrado(atendimentos) {
   const labels = Object.keys(bairrosConta);
   const data = Object.values(bairrosConta);
 
-  if (!labels.length) {
   state.charts.bairros = new Chart(ctx, {
-    type: "pie",
-    data: {
-      labels: [],
-      datasets: []
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false
-    }
-  });
-  return;
-}
-
-
-  state.charts.bairros = new Chart(ctx, {
-    type: "pie",
+    type: "doughnut",
     data: {
       labels,
-      datasets: [
-        {
-          data,
-          backgroundColor: [
-            "#0ea5e9",
-            "#8b5cf6",
-            "#10b981",
-            "#f59e0b",
-            "#ef4444",
-            "#06b6d4",
-            "#6366f1",
-            "#f43f5e",
-          ],
-          borderWidth: 2,
-          borderColor: "#fff",
-        },
-      ],
+      datasets: [{
+        data,
+        backgroundColor: [
+          "#6366f1",
+          "#8b5cf6",
+          "#ec4899",
+          "#f59e0b",
+          "#10b981",
+          "#ef4444"
+        ],
+        borderWidth: 2,
+        borderColor: "#fff"
+      }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      cutout: "65%",
       plugins: {
         legend: {
-          position: "bottom",
-        },
-      },
-    },
+          position: "bottom"
+        }
+      }
+    }
   });
 }
+
 
 function gerarRelatorioDiario() {
   const ano = document.getElementById("relatorioAno")?.value;
@@ -1183,12 +1176,10 @@ function criarGraficoAtendimentosMes(atendimentos) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  // Destrói gráfico anterior se existir
   if (state.charts.atendimentosMes) {
     state.charts.atendimentosMes.destroy();
   }
 
-  // 🔎 Agrupa por mês
   const porMes = {};
 
   atendimentos.forEach((a) => {
@@ -1199,26 +1190,30 @@ function criarGraficoAtendimentosMes(atendimentos) {
   const labels = Object.keys(porMes).sort();
   const data = labels.map((mes) => porMes[mes]);
 
-  if (labels.length === 0) {
-    ctx.parentElement.innerHTML =
-      '<p style="text-align:center;padding:2rem;color:#94a3b8;">Nenhum dado disponível</p>';
+  if (!labels.length) {
+    state.charts.atendimentosMes = new Chart(ctx, {
+      type: "radar",
+      data: { labels: [], datasets: [] },
+      options: { responsive: true, maintainAspectRatio: false },
+    });
     return;
   }
 
   state.charts.atendimentosMes = new Chart(ctx, {
-    type: "line",
+    type: "radar",
     data: {
-      labels: labels,
+      labels,
       datasets: [
         {
-          label: "Atendimentos por Mês",
-          data: data,
-          borderColor: "rgba(139, 92, 246, 1)",
-          backgroundColor: "rgba(139, 92, 246, 0.2)",
+          label: "Atendimentos",
+          data,
+          backgroundColor: "rgba(14,165,233,0.25)",
+          borderColor: "#0284c7",
           borderWidth: 3,
-          tension: 0.3,
-          fill: true,
-          pointRadius: 4,
+          pointBackgroundColor: "#0ea5e9",
+          pointBorderColor: "#ffffff",
+          pointBorderWidth: 2,
+          pointRadius: 5,
         },
       ],
     },
@@ -1227,12 +1222,35 @@ function criarGraficoAtendimentosMes(atendimentos) {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: true,
+          display: false,
+        },
+        tooltip: {
+          backgroundColor: "#1e293b",
+          titleColor: "#fff",
+          bodyColor: "#fff",
+          padding: 10,
         },
       },
       scales: {
-        y: {
+        r: {
           beginAtZero: true,
+          grid: {
+            color: "rgba(148,163,184,0.2)",
+          },
+          angleLines: {
+            color: "rgba(148,163,184,0.3)",
+          },
+          pointLabels: {
+            color: "#334155",
+            font: {
+              size: 12,
+              weight: "bold",
+            },
+          },
+          ticks: {
+            backdropColor: "transparent",
+            color: "#64748b",
+          },
         },
       },
     },
@@ -1244,11 +1262,14 @@ function criarGraficoMedicamentos(saidasFiltradas) {
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
 
   if (state.charts.medicamentos) {
     state.charts.medicamentos.destroy();
   }
+
+  const limite = parseInt(
+    document.getElementById("filtroTopAtendimentos")?.value || 10
+  );
 
   const medicamentosConta = {};
 
@@ -1259,119 +1280,67 @@ function criarGraficoMedicamentos(saidasFiltradas) {
 
   const ordenado = Object.entries(medicamentosConta)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 15);
+    .slice(0, limite);
 
-  const totalGeral = ordenado.reduce((sum, item) => sum + item[1], 0);
+  if (!ordenado.length) return;
 
-  const labels = ordenado.map((item, index) => {
-    let medalha = `#${index + 1}`;
-
-    if (index === 0) medalha = "🥇 1º";
-    if (index === 1) medalha = "🥈 2º";
-    if (index === 2) medalha = "🥉 3º";
-
-    return quebrarTexto(`${medalha} - ${item[0]}`, 32);
-  });
-
-  const data = ordenado.map((item) => item[1]);
-
-  if (!labels.length) {
-    state.charts.medicamentos = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: [],
-        datasets: [],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-      },
-    });
-    return;
-  }
-
-  // 🎨 Gradientes diferentes para Top 3
-  const cores = ordenado.map((_, index) => {
-    const gradient = ctx.createLinearGradient(0, 0, 600, 0);
-
-    if (index === 0) {
-      gradient.addColorStop(0, "#f59e0b");
-      gradient.addColorStop(1, "#fbbf24");
-    } else if (index === 1) {
-      gradient.addColorStop(0, "#94a3b8");
-      gradient.addColorStop(1, "#cbd5e1");
-    } else if (index === 2) {
-      gradient.addColorStop(0, "#b45309");
-      gradient.addColorStop(1, "#f97316");
-    } else {
-      gradient.addColorStop(0, "#0ea5e9");
-      gradient.addColorStop(1, "#8b5cf6");
+  const labels = ordenado.map(item => {
+    if (item[0].length > 35) {
+      return item[0].substring(0, 35) + "...";
     }
-
-    return gradient;
+    return item[0];
   });
+
+  const data = ordenado.map(item => item[1]);
+
+  // 🔥 aumenta altura dinamicamente
+  canvas.parentElement.style.height = `${Math.max(300, labels.length * 45)}px`;
+
+  const gradient = ctx.createLinearGradient(0, 0, 400, 0);
+  gradient.addColorStop(0, "#0ea5e9");
+  gradient.addColorStop(1, "#8b5cf6");
 
   state.charts.medicamentos = new Chart(ctx, {
     type: "bar",
     data: {
       labels,
-      datasets: [
-        {
-          data,
-          backgroundColor: cores,
-          borderRadius: 6,
-          barThickness: 14,
-        },
-      ],
+      datasets: [{
+        data,
+        backgroundColor: gradient,
+        borderRadius: 8,
+        barThickness: 25
+      }]
     },
     options: {
+      indexAxis: "y", // 🔥 horizontal
       responsive: true,
       maintainAspectRatio: false,
-      indexAxis: "y",
       plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function (context) {
-              const valor = context.raw;
-              const percentual = ((valor / totalGeral) * 100).toFixed(1);
-              return ` ${valor} unidades (${percentual}%)`;
-            },
-          },
-        },
+        legend: { display: false }
       },
       scales: {
         x: {
           beginAtZero: true,
+          grid: {
+            color: "rgba(148,163,184,0.1)"
+          }
         },
         y: {
-          ticks: {
-            font: { size: 11 },
+          grid: {
+            display: false
           },
-          grid: { display: false },
-        },
-      },
-    },
-    plugins: [
-      {
-        id: "valorNaBarra",
-        afterDatasetsDraw(chart) {
-          const { ctx } = chart;
-          ctx.save();
-          ctx.font = "bold 11px Poppins";
-          ctx.fillStyle = "#1e293b";
-
-          chart.getDatasetMeta(0).data.forEach((bar, index) => {
-            const valor = data[index];
-            ctx.fillText(valor, bar.x + 5, bar.y + 4);
-          });
-
-          ctx.restore();
-        },
-      },
-    ],
+          ticks: {
+            font: {
+              size: 10
+            }
+          }
+        }
+      }
+    }
   });
 }
+
+
 
 function quebrarTexto(texto, tamanhoLinha) {
   const palavras = texto.split(" ");
@@ -1468,6 +1437,107 @@ function carregarRelacaoAtendimentos(lista = state.atendimentos) {
       tbody.appendChild(tr);
     });
 }
+
+function criarGraficoEvolucao(atendimentos) {
+  const canvas = document.getElementById("chartEvolucaoAtendimentos");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+
+  if (state.charts.evolucao) {
+    state.charts.evolucao.destroy();
+  }
+
+  // 🔎 Agrupa por mês
+  const porMes = {};
+
+  atendimentos.forEach((a) => {
+    const mes = a.data.substring(0, 7); // YYYY-MM
+    porMes[mes] = (porMes[mes] || 0) + 1;
+  });
+
+  const labels = Object.keys(porMes).sort();
+  const data = labels.map(m => porMes[m]);
+
+  if (!labels.length) return;
+
+  // 🎨 Gradiente estilo Power BI
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, "rgba(14,165,233,0.45)");
+  gradient.addColorStop(1, "rgba(14,165,233,0.05)");
+
+  state.charts.evolucao = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "Atendimentos",
+        data,
+        fill: true,
+        backgroundColor: gradient,
+        borderColor: "#0ea5e9",
+        borderWidth: 3,
+        tension: 0.4, // 🔥 curva suave
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBackgroundColor: "#ffffff",
+        pointBorderColor: "#0ea5e9",
+        pointBorderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: "index",
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: "#1e293b",
+          titleColor: "#ffffff",
+          bodyColor: "#ffffff",
+          padding: 10,
+          displayColors: false,
+          callbacks: {
+            label: function(context) {
+              return ` ${context.raw} atendimentos`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            color: "#64748b"
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: "rgba(148,163,184,0.15)"
+          },
+          ticks: {
+            color: "#64748b",
+            precision: 0
+          }
+        }
+      },
+      animation: {
+        duration: 1200,
+        easing: "easeOutQuart"
+      }
+    }
+  });
+}
+
+
 
 function filtrarRelacaoAtendimentos() {
   const ano = document.getElementById("filtroAno")?.value;

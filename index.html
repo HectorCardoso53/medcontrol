@@ -339,6 +339,9 @@
             </section>
 
             <!-- SEÇÃO: RELATÓRIOS -->
+            <!-- ========================================= -->
+            <!-- SEÇÃO: RELATÓRIOS -->
+            <!-- ========================================= -->
             <section id="relatorios" class="section">
 
                 <div class="section-header">
@@ -381,6 +384,7 @@
 
                 <!-- 📊 CARDS RESUMO -->
                 <div class="stats-grid">
+
                     <div class="stat-card">
                         <div class="stat-content">
                             <p class="stat-label">Total de Atendimentos</p>
@@ -401,18 +405,38 @@
                             <p class="stat-value" id="cardTopBairro">-</p>
                         </div>
                     </div>
+
                 </div>
 
                 <!-- 📈 GRÁFICOS -->
                 <div class="charts-grid">
 
+                    <!-- 🏆 ATENDIMENTOS POR PACIENTE -->
                     <div class="card">
-                        <h3 class="card-title">Atendimentos por Mês</h3>
+
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+
+                            <h3 class="card-title" style="margin:0;">
+                                Ranking de Atendimentos por Paciente
+                            </h3>
+
+                            <select id="filtroTopAtendimentos" onchange="carregarRelatorios()"
+                                style="padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0; font-family:Poppins;">
+                                <option value="5">Top 5</option>
+                                <option value="10">Top 10</option>
+                                <option value="15" selected>Top 15</option>
+                            </select>
+
+                        </div>
+
                         <div class="chart-container">
                             <canvas id="chartAtendimentosMes"></canvas>
                         </div>
+
                     </div>
 
+                    <!-- 💊 MEDICAMENTOS -->
                     <div class="card">
                         <h3 class="card-title">Medicamentos Mais Distribuídos</h3>
                         <div class="chart-container">
@@ -420,6 +444,7 @@
                         </div>
                     </div>
 
+                    <!-- 🏘 BAIRROS -->
                     <div class="card">
                         <h3 class="card-title">Bairros Mais Atendidos</h3>
                         <div class="chart-container">
@@ -427,11 +452,17 @@
                         </div>
                     </div>
 
+                    <div class="card">
+                        <h3 class="card-title">Evolução de Atendimentos</h3>
+                        <div class="chart-container">
+                            <canvas id="chartEvolucaoAtendimentos"></canvas>
+                        </div>
+                    </div>
+
+
                 </div>
 
-
             </section>
-
 
             <!-- SEÇÃO: RELAÇÃO DE ATENDIMENTOS -->
             <section id="relacao-atendimentos" class="section">
