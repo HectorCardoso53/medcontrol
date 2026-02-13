@@ -134,8 +134,6 @@
                 </div>
             </section>
 
-
-
             <!-- SEÇÃO: CADASTRO DE MEDICAMENTOS -->
             <section id="medicamentos" class="section">
                 <div class="section-header">
@@ -275,36 +273,50 @@
                     </div>
                 </div>
 
-                <!-- FILTROS -->
+                <!-- FILTRO EXECUTIVO -->
                 <div class="card filtro-estoque">
-                    <div class="filtro-container">
 
-                        <div class="filtro-item">
-                            <label>Status</label>
-                            <select id="filtroStatusEstoque" onchange="filtrarEstoque()">
-                                <option value="">Todos</option>
-                                <option value="sem">Sem Estoque</option>
-                                <option value="baixo">Estoque Baixo</option>
-                                <option value="vencendo">Próx. Vencimento</option>
-                                <option value="ok">OK</option>
-                            </select>
+                    <div class="filtro-barra">
+
+                        <!-- Busca -->
+                        <div class="filtro-busca">
+                            <span class="icone-busca">🔎</span>
+                            <input type="text" id="buscarMedicamento" placeholder="Buscar medicamento..."
+                                oninput="filtrarEstoque()">
                         </div>
 
-                        <div class="filtro-item">
-                            <label>Ordenar</label>
-                            <select id="ordenarValidade" onchange="filtrarEstoque()">
-                                <option value="">Padrão</option>
-                                <option value="validade">Validade (mais próximo primeiro)</option>
-                                <option value="saldo">Menor Saldo</option>
-                            </select>
-                        </div>
+                        <!-- Status -->
+                        <select id="filtroStatusEstoque" onchange="filtrarEstoque()">
+                            <option value="">Todos Status</option>
+                            <option value="sem">Sem Estoque</option>
+                            <option value="baixo">Estoque Baixo</option>
+                            <option value="vencendo">Próx. Vencimento</option>
+                            <option value="ok">OK</option>
+                        </select>
+
+                        <!-- Ordenação -->
+                        <select id="ordenarValidade" onchange="filtrarEstoque()">
+                            <option value="">Ordenar</option>
+                            <option value="validade">Validade</option>
+                            <option value="saldo">Menor Saldo</option>
+                        </select>
+
+                        <!-- Limpar -->
+                        <button class="btn btn-secondary" onclick="limparFiltrosEstoque()">
+                            Limpar
+                        </button>
 
                     </div>
+
+                    <!-- Contador -->
+                    <div class="filtro-info">
+                        <span id="contadorEstoque">Mostrando 0 registros</span>
+                    </div>
+
                 </div>
 
-
                 <!-- TABELA -->
-                <div class="card" style="margin-top: 1rem;">
+                <div class="card">
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
@@ -315,7 +327,8 @@
                                     <th>Recebido</th>
                                     <th>Distribuído</th>
                                     <th>Saldo</th>
-                                    <th>Status</th>
+                                    <th>Status Estoque</th>
+                                    <th>Status Validade</th>
                                 </tr>
                             </thead>
                             <tbody id="tabelaEstoque"></tbody>
@@ -324,7 +337,6 @@
                 </div>
 
             </section>
-
 
             <!-- SEÇÃO: RELATÓRIOS -->
             <section id="relatorios" class="section">
@@ -435,9 +447,6 @@
                             <label>Medicamento</label>
                             <input type="text" id="filtroMedicamento" placeholder="Ex: Amoxicilina">
                         </div>
-
-
-
 
 
                         <div class="form-group" style="align-self:end">
