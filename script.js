@@ -1014,9 +1014,7 @@ function criarGraficoAtendimentosPorNome(atendimentos) {
     state.charts.atendimentosNome.destroy();
   }
 
-  const limite = parseInt(
-    document.getElementById("filtroTopAtendimentos")?.value || 15
-  );
+  const limite = 10; // 🔥 FIXO EM TOP 10
 
   const pacientesConta = {};
 
@@ -1029,14 +1027,16 @@ function criarGraficoAtendimentosPorNome(atendimentos) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, limite);
 
+  if (!ordenado.length) return;
+
   const labels = ordenado.map(item => item[0]);
   const data = ordenado.map(item => item[1]);
 
   const cores = ordenado.map((_, index) => {
-    if (index === 0) return "#f59e0b";
-    if (index === 1) return "#94a3b8";
-    if (index === 2) return "#f97316";
-    return "#0ea5e9";
+    if (index === 0) return "#f59e0b";   // 🥇 Ouro
+    if (index === 1) return "#94a3b8";   // 🥈 Prata
+    if (index === 2) return "#f97316";   // 🥉 Bronze
+    return "#0ea5e9";                    // Restante azul
   });
 
   state.charts.atendimentosNome = new Chart(ctx, {
@@ -1054,11 +1054,21 @@ function criarGraficoAtendimentosPorNome(atendimentos) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false }
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return ` ${context.raw} atendimentos`;
+            }
+          }
+        }
       },
       scales: {
         x: {
-          ticks: { maxRotation: 45, minRotation: 45 }
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45
+          }
         },
         y: {
           beginAtZero: true
@@ -1067,7 +1077,6 @@ function criarGraficoAtendimentosPorNome(atendimentos) {
     }
   });
 }
-
 
 
 
@@ -1558,41 +1567,36 @@ function filtrarRelacaoAtendimentos() {
 
   // 📅 Mês
   if (mes) {
-    atendimentos = atendimentos.filter((a) => {
+    filtrados = filtrados.filter((a) => {
       const data = new Date(a.data + "T00:00:00");
       const mesAtendimento = String(data.getMonth() + 1).padStart(2, "0");
       return mesAtendimento === mes;
-    });
-
-    saidas = saidas.filter((s) => {
-      const data = new Date(s.data + "T00:00:00");
-      const mesSaida = String(data.getMonth() + 1).padStart(2, "0");
-      return mesSaida === mes;
     });
   }
 
   // 👤 Paciente
   if (paciente) {
     filtrados = filtrados.filter((a) =>
-      a.nomePaciente.toLowerCase().includes(paciente),
+      a.nomePaciente.toLowerCase().includes(paciente)
     );
   }
 
-  // 💊 Medicamento (INPUT 🔥)
+  // 💊 Medicamento
   if (medicamento) {
     filtrados = filtrados.filter((a) =>
-      a.itens.some((i) => i.medicamento.toLowerCase().includes(medicamento)),
+      a.itens.some((i) =>
+        i.medicamento.toLowerCase().includes(medicamento)
+      )
     );
   }
 
   atendimentosFiltrados = filtrados;
   carregarRelacaoAtendimentos(filtrados);
 
-  // 🔥 mostra botão PDF
-  document.getElementById("btnPdf").style.display = filtrados.length
-    ? "inline-flex"
-    : "none";
+  document.getElementById("btnPdf").style.display =
+    filtrados.length ? "inline-flex" : "none";
 }
+
 
 function baixarPdfAtendimentos() {
   if (!atendimentosFiltrados.length) {
@@ -1984,13 +1988,21 @@ function carregarSelectMedicamentosCadastro() {
   select.innerHTML =
     '<option value="">Selecione ou digite o medicamento</option>';
 
-  LISTA_MEDICAMENTOS.sort((a, b) => a.localeCompare(b)).forEach((med) => {
-    const option = document.createElement("option");
-    option.value = med;
-    option.textContent = med;
-    select.appendChild(option);
-  });
+  LISTA_MEDICAMENTOS
+    .slice() // 🔥 cria cópia (boa prática)
+    .sort((a, b) =>
+      a.localeCompare(b, "pt-BR", { sensitivity: "base" })
+    )
+    .forEach((med) => {
+      const option = document.createElement("option");
+      option.value = med;
+      option.textContent = med;
+      select.appendChild(option);
+    });
+
+  console.log("✅ Total carregado:", LISTA_MEDICAMENTOS.length);
 }
+
 
 function ativarBuscaSelectMedicamento() {
   selectMedicamentoInstance = new TomSelect("#descricaoMed", {

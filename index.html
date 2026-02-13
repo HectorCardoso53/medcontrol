@@ -338,127 +338,6 @@
 
             </section>
 
-            <!-- SEÇÃO: RELATÓRIOS -->
-            <!-- ========================================= -->
-            <!-- SEÇÃO: RELATÓRIOS -->
-            <!-- ========================================= -->
-            <section id="relatorios" class="section">
-
-                <div class="section-header">
-                    <h2>Relatórios e Análises</h2>
-                    <p class="subtitle">Visualize estatísticas e tendências do sistema</p>
-                </div>
-
-                <!-- 🔎 FILTROS -->
-                <div class="card filtro-relatorio">
-                    <div class="filtro-container">
-
-                        <div class="filtro-item">
-                            <label>Ano</label>
-                            <select id="relatorioAno" onchange="carregarRelatorios()">
-                                <option value="">Todos</option>
-                            </select>
-                        </div>
-
-                        <div class="filtro-item">
-                            <label>Mês</label>
-                            <select id="relatorioMes" onchange="carregarRelatorios()">
-                                <option value="">Todos</option>
-                                <option value="01">Janeiro</option>
-                                <option value="02">Fevereiro</option>
-                                <option value="03">Março</option>
-                                <option value="04">Abril</option>
-                                <option value="05">Maio</option>
-                                <option value="06">Junho</option>
-                                <option value="07">Julho</option>
-                                <option value="08">Agosto</option>
-                                <option value="09">Setembro</option>
-                                <option value="10">Outubro</option>
-                                <option value="11">Novembro</option>
-                                <option value="12">Dezembro</option>
-                            </select>
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- 📊 CARDS RESUMO -->
-                <div class="stats-grid">
-
-                    <div class="stat-card">
-                        <div class="stat-content">
-                            <p class="stat-label">Total de Atendimentos</p>
-                            <p class="stat-value" id="cardTotalAtendimentos">0</p>
-                        </div>
-                    </div>
-
-                    <div class="stat-card">
-                        <div class="stat-content">
-                            <p class="stat-label">Total Medicamentos Distribuídos</p>
-                            <p class="stat-value" id="cardTotalMedicamentos">0</p>
-                        </div>
-                    </div>
-
-                    <div class="stat-card">
-                        <div class="stat-content">
-                            <p class="stat-label">Bairro com Mais Atendimentos</p>
-                            <p class="stat-value" id="cardTopBairro">-</p>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- 📈 GRÁFICOS -->
-                <div class="charts-grid">
-
-                    <!-- 🏆 ATENDIMENTOS POR PACIENTE -->
-                    <div class="card">
-
-                        <div
-                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-
-                            <h3 class="card-title" style="margin:0;">
-                                Ranking de Atendimentos por Paciente
-                            </h3>
-
-                    
-
-                        </div>
-
-                        <div class="chart-container">
-                            <canvas id="chartAtendimentosMes"></canvas>
-                        </div>
-
-                    </div>
-
-                    <!-- 💊 MEDICAMENTOS -->
-                    <div class="card">
-                        <h3 class="card-title">Medicamentos Mais Distribuídos</h3>
-                        <div class="chart-container">
-                            <canvas id="chartMedicamentos"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- 🏘 BAIRROS -->
-                    <div class="card">
-                        <h3 class="card-title">Bairros Mais Atendidos</h3>
-                        <div class="chart-container">
-                            <canvas id="chartBairros"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <h3 class="card-title">Evolução de Atendimentos</h3>
-                        <div class="chart-container">
-                            <canvas id="chartEvolucaoAtendimentos"></canvas>
-                        </div>
-                    </div>
-
-
-                </div>
-
-            </section>
-
             <!-- SEÇÃO: RELAÇÃO DE ATENDIMENTOS -->
             <section id="relacao-atendimentos" class="section">
                 <div class="section-header">
@@ -545,6 +424,127 @@
                     </div>
                 </div>
             </section>
+         
+            <!-- SEÇÃO: RELATÓRIOS -->
+            <!-- ========================================= -->
+            <section id="relatorios" class="section">
+
+                <div class="section-header">
+                    <h2>Relatórios e Análises</h2>
+                    <p class="subtitle">Visualize estatísticas e tendências do sistema</p>
+                </div>
+
+                <!-- 🔎 FILTROS -->
+                <div class="card filtro-relatorio">
+                    <div class="filtro-container">
+
+                        <div class="filtro-item">
+                            <label>Ano</label>
+                            <select id="relatorioAno" onchange="carregarRelatorios()">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+
+                        <div class="filtro-item">
+                            <label>Mês</label>
+                            <select id="relatorioMes" onchange="carregarRelatorios()">
+                                <option value="">Todos</option>
+                                <option value="01">Janeiro</option>
+                                <option value="02">Fevereiro</option>
+                                <option value="03">Março</option>
+                                <option value="04">Abril</option>
+                                <option value="05">Maio</option>
+                                <option value="06">Junho</option>
+                                <option value="07">Julho</option>
+                                <option value="08">Agosto</option>
+                                <option value="09">Setembro</option>
+                                <option value="10">Outubro</option>
+                                <option value="11">Novembro</option>
+                                <option value="12">Dezembro</option>
+                            </select>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 📊 CARDS RESUMO -->
+                <div class="stats-grid">
+
+                    <div class="stat-card">
+                        <div class="stat-content">
+                            <p class="stat-label">Total de Atendimentos</p>
+                            <p class="stat-value" id="cardTotalAtendimentos">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-content">
+                            <p class="stat-label">Total Medicamentos Distribuídos</p>
+                            <p class="stat-value" id="cardTotalMedicamentos">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-content">
+                            <p class="stat-label">Bairro com Mais Atendimentos</p>
+                            <p class="stat-value" id="cardTopBairro">-</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 📈 GRÁFICOS -->
+                <div class="charts-grid">
+
+                    <!-- 🏆 ATENDIMENTOS POR PACIENTE -->
+                    <div class="card">
+
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+
+                            <h3 class="card-title" style="margin:0;">
+                                Ranking de Atendimentos por Paciente
+                            </h3>
+
+                
+
+                        </div>
+
+                        <div class="chart-container">
+                            <canvas id="chartAtendimentosMes"></canvas>
+                        </div>
+
+                    </div>
+
+                    <!-- 💊 MEDICAMENTOS -->
+                    <div class="card">
+                        <h3 class="card-title">Medicamentos Mais Distribuídos</h3>
+                        <div class="chart-container">
+                            <canvas id="chartMedicamentos"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 🏘 BAIRROS -->
+                    <div class="card">
+                        <h3 class="card-title">Bairros Mais Atendidos</h3>
+                        <div class="chart-container">
+                            <canvas id="chartBairros"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="card-title">Evolução de Atendimentos</h3>
+                        <div class="chart-container">
+                            <canvas id="chartEvolucaoAtendimentos"></canvas>
+                        </div>
+                    </div>
+
+
+                </div>
+
+            </section>
+
+            
         </div>
     </main>
 
