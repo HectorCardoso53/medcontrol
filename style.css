@@ -899,3 +899,63 @@ body {
     font-family: 'Poppins', sans-serif;
 }
 
+
+.linha-critica {
+  background-color: #ffe5e5;
+}
+
+.linha-alerta {
+  background-color: #fff7e6;
+}
+
+.data-table tr:hover {
+  background-color: #f1f5f9;
+  transition: 0.2s ease;
+}
+
+
+/* ===================================
+   FILTRO ESTOQUE PROFISSIONAL
+   =================================== */
+
+.filtro-estoque {
+    padding: var(--spacing-lg);
+}
+
+.filtro-container {
+    display: flex;
+    gap: var(--spacing-xl);
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.filtro-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 220px;
+}
+
+.filtro-item label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filtro-item select {
+    padding: var(--spacing-md);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+    background: var(--bg-secondary);
+    transition: var(--transition);
+}
+
+.filtro-item select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}

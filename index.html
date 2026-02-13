@@ -230,11 +230,13 @@
 
             <!-- SEÇÃO: ESTOQUE -->
             <section id="estoque" class="section">
+
                 <div class="section-header">
                     <h2>Estoque de Medicamentos</h2>
                     <p class="subtitle">Acompanhe o saldo disponível e validades</p>
                 </div>
 
+                <!-- CARDS -->
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">📦
@@ -244,6 +246,7 @@
                             <p class="stat-value" id="totalEstoque">0</p>
                         </div>
                     </div>
+
                     <div class="stat-card">
                         <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">⚠️
                         </div>
@@ -252,6 +255,7 @@
                             <p class="stat-value" id="estoqueBaixo">0</p>
                         </div>
                     </div>
+
                     <div class="stat-card">
                         <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">📅
                         </div>
@@ -260,6 +264,7 @@
                             <p class="stat-value" id="proximosVencer">0</p>
                         </div>
                     </div>
+
                     <div class="stat-card">
                         <div class="stat-icon" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">💊
                         </div>
@@ -270,7 +275,36 @@
                     </div>
                 </div>
 
-                <div class="card">
+                <!-- FILTROS -->
+                <div class="card filtro-estoque">
+                    <div class="filtro-container">
+
+                        <div class="filtro-item">
+                            <label>Status</label>
+                            <select id="filtroStatusEstoque" onchange="filtrarEstoque()">
+                                <option value="">Todos</option>
+                                <option value="sem">Sem Estoque</option>
+                                <option value="baixo">Estoque Baixo</option>
+                                <option value="vencendo">Próx. Vencimento</option>
+                                <option value="ok">OK</option>
+                            </select>
+                        </div>
+
+                        <div class="filtro-item">
+                            <label>Ordenar</label>
+                            <select id="ordenarValidade" onchange="filtrarEstoque()">
+                                <option value="">Padrão</option>
+                                <option value="validade">Validade (mais próximo primeiro)</option>
+                                <option value="saldo">Menor Saldo</option>
+                            </select>
+                        </div>
+
+                    </div>
+                </div>
+
+
+                <!-- TABELA -->
+                <div class="card" style="margin-top: 1rem;">
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
@@ -288,7 +322,9 @@
                         </table>
                     </div>
                 </div>
+
             </section>
+
 
             <!-- SEÇÃO: RELATÓRIOS -->
             <section id="relatorios" class="section">
@@ -446,7 +482,7 @@
             </span>
             <span class="footer-divider">•</span>
             <span class="footer-sub">
-                Sistema de Controle de Medicamentos 
+                Sistema de Controle de Medicamentos
             </span>
         </div>
     </footer>
