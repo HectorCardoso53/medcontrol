@@ -354,20 +354,22 @@ function carregarSelectMedicamentos() {
 }
 
 function carregarFiltroAno() {
-  const select = document.getElementById("filtroAno");
+  const select = document.getElementById("relatorioAno");
   if (!select) return;
 
   select.innerHTML = '<option value="">Todos</option>';
 
-  const anoAtual = new Date().getFullYear();
+  const anoInicial = 2026;
+  const anoFinal = new Date().getFullYear() + 5; // até 5 anos no futuro
 
-  for (let ano = 2026; ano <= anoAtual + 5; ano++) {
+  for (let ano = anoInicial; ano <= anoFinal; ano++) {
     const option = document.createElement("option");
     option.value = String(ano);
     option.textContent = ano;
     select.appendChild(option);
   }
 }
+
 
 function carregarFiltroMedicamentos() {
   const select = document.getElementById("filtroMedicamento");
@@ -614,8 +616,7 @@ function filtrarEstoque() {
 
     let statusValidade = "ok";
     if (diasVencer < 0) statusValidade = "vencido";
-    else if (diasVencer <= CONFIG.DIAS_VENCIMENTO)
-      statusValidade = "vencendo";
+    else if (diasVencer <= CONFIG.DIAS_VENCIMENTO) statusValidade = "vencendo";
 
     return {
       ...med,
@@ -628,9 +629,7 @@ function filtrarEstoque() {
   });
 
   if (busca) {
-    lista = lista.filter((m) =>
-      m.descricao.toLowerCase().includes(busca)
-    );
+    lista = lista.filter((m) => m.descricao.toLowerCase().includes(busca));
   }
 
   if (filtroStatus) {
@@ -699,7 +698,6 @@ function filtrarEstoque() {
     `Mostrando ${lista.length} registros`;
 }
 
-
 function limparFiltrosEstoque() {
   const busca = document.getElementById("buscarMedicamento");
   const status = document.getElementById("filtroStatusEstoque");
@@ -746,7 +744,6 @@ function atualizarCardsEstoque() {
 }
 
 function atualizarCardsRelatorio(atendimentos, saidas) {
-
   const totalAtendimentos = atendimentos.length;
   const elTotalAtend = document.getElementById("cardTotalAtendimentos");
   if (elTotalAtend) {
@@ -760,7 +757,7 @@ function atualizarCardsRelatorio(atendimentos, saidas) {
   }
 
   const bairrosConta = {};
-  atendimentos.forEach(a => {
+  atendimentos.forEach((a) => {
     bairrosConta[a.bairro] = (bairrosConta[a.bairro] || 0) + 1;
   });
 
@@ -780,7 +777,6 @@ function atualizarCardsRelatorio(atendimentos, saidas) {
   }
 }
 
-
 // ===================================
 // RELATÓRIOS E GRÁFICOS
 // ===================================
@@ -793,22 +789,21 @@ function carregarRelatorios() {
   let saidas = [...state.saidas];
 
   if (ano) {
-    atendimentos = atendimentos.filter(a => a.data.startsWith(ano));
-    saidas = saidas.filter(s => s.data.startsWith(ano));
+    atendimentos = atendimentos.filter((a) => a.data.startsWith(ano));
+    saidas = saidas.filter((s) => s.data.startsWith(ano));
   }
 
   if (mes) {
-    atendimentos = atendimentos.filter(a => a.data.split("-")[1] === mes);
-    saidas = saidas.filter(s => s.data.split("-")[1] === mes);
+    atendimentos = atendimentos.filter((a) => a.data.split("-")[1] === mes);
+    saidas = saidas.filter((s) => s.data.split("-")[1] === mes);
   }
 
   atualizarCardsRelatorio(atendimentos, saidas);
-  criarGraficoAtendimentosMes(atendimentos);
+  criarGraficoAtendimentosPorNome(atendimentos);
+
   criarGraficoMedicamentos(saidas);
   criarGraficoBairrosFiltrado(atendimentos); // 🔥 NOVO
 }
-
-
 
 function carregarTabelaBairros() {
   const tbody = document.getElementById("tabelaBairros");
@@ -1003,6 +998,68 @@ function criarGraficoBairros() {
   });
 }
 
+function criarGraficoAtendimentosPorNome(atendimentos) {
+  const canvas = document.getElementById("chartAtendimentosMes");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  if (state.charts.atendimentosNome) {
+    state.charts.atendimentosNome.destroy();
+  }
+
+  const pacientesConta = {};
+
+  atendimentos.forEach((a) => {
+    pacientesConta[a.nomePaciente] = (pacientesConta[a.nomePaciente] || 0) + 1;
+  });
+
+  const ordenado = Object.entries(pacientesConta)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15);
+
+  const labels = ordenado.map((item, index) => `#${index + 1} - ${item[0]}`);
+
+  const data = ordenado.map((item) => item[1]);
+
+  // 🔥 Se não houver dados → apenas limpa o gráfico
+  if (!labels.length) {
+    state.charts.atendimentosNome = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: [],
+        datasets: [],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+      },
+    });
+    return;
+  }
+
+  state.charts.atendimentosNome = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Total de Atendimentos",
+          data,
+          backgroundColor: "#0ea5e9",
+          borderRadius: 6,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: "y",
+    },
+  });
+}
+
 function criarGraficoBairrosFiltrado(atendimentos) {
   const canvas = document.getElementById("chartBairros");
   if (!canvas) return;
@@ -1024,43 +1081,54 @@ function criarGraficoBairrosFiltrado(atendimentos) {
   const data = Object.values(bairrosConta);
 
   if (!labels.length) {
-    ctx.parentElement.innerHTML =
-      '<p style="text-align:center;padding:2rem;color:#94a3b8;">Nenhum dado disponível</p>';
-    return;
-  }
+  state.charts.bairros = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels: [],
+      datasets: []
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  });
+  return;
+}
+
 
   state.charts.bairros = new Chart(ctx, {
     type: "pie",
     data: {
       labels,
-      datasets: [{
-        data,
-        backgroundColor: [
-          "#0ea5e9",
-          "#8b5cf6",
-          "#10b981",
-          "#f59e0b",
-          "#ef4444",
-          "#06b6d4",
-          "#6366f1",
-          "#f43f5e"
-        ],
-        borderWidth: 2,
-        borderColor: "#fff"
-      }]
+      datasets: [
+        {
+          data,
+          backgroundColor: [
+            "#0ea5e9",
+            "#8b5cf6",
+            "#10b981",
+            "#f59e0b",
+            "#ef4444",
+            "#06b6d4",
+            "#6366f1",
+            "#f43f5e",
+          ],
+          borderWidth: 2,
+          borderColor: "#fff",
+        },
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          position: "bottom"
-        }
-      }
-    }
+          position: "bottom",
+        },
+      },
+    },
   });
 }
-
 
 function gerarRelatorioDiario() {
   const ano = document.getElementById("relatorioAno")?.value;
@@ -1171,7 +1239,6 @@ function criarGraficoAtendimentosMes(atendimentos) {
   });
 }
 
-
 function criarGraficoMedicamentos(saidasFiltradas) {
   const canvas = document.getElementById("chartMedicamentos");
   if (!canvas) return;
@@ -1209,8 +1276,17 @@ function criarGraficoMedicamentos(saidasFiltradas) {
   const data = ordenado.map((item) => item[1]);
 
   if (!labels.length) {
-    ctx.parentElement.innerHTML =
-      '<p style="text-align:center;padding:2rem;color:#94a3b8;">Nenhum dado disponível</p>';
+    state.charts.medicamentos = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: [],
+        datasets: [],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+      },
+    });
     return;
   }
 
@@ -1239,12 +1315,14 @@ function criarGraficoMedicamentos(saidasFiltradas) {
     type: "bar",
     data: {
       labels,
-      datasets: [{
-        data,
-        backgroundColor: cores,
-        borderRadius: 6,
-        barThickness: 14
-      }]
+      datasets: [
+        {
+          data,
+          backgroundColor: cores,
+          borderRadius: 6,
+          barThickness: 14,
+        },
+      ],
     },
     options: {
       responsive: true,
@@ -1254,52 +1332,53 @@ function criarGraficoMedicamentos(saidasFiltradas) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: function(context) {
+            label: function (context) {
               const valor = context.raw;
               const percentual = ((valor / totalGeral) * 100).toFixed(1);
               return ` ${valor} unidades (${percentual}%)`;
-            }
-          }
-        }
+            },
+          },
+        },
       },
       scales: {
         x: {
-          beginAtZero: true
+          beginAtZero: true,
         },
         y: {
           ticks: {
-            font: { size: 11 }
+            font: { size: 11 },
           },
-          grid: { display: false }
-        }
-      }
+          grid: { display: false },
+        },
+      },
     },
-    plugins: [{
-      id: 'valorNaBarra',
-      afterDatasetsDraw(chart) {
-        const { ctx } = chart;
-        ctx.save();
-        ctx.font = "bold 11px Poppins";
-        ctx.fillStyle = "#1e293b";
+    plugins: [
+      {
+        id: "valorNaBarra",
+        afterDatasetsDraw(chart) {
+          const { ctx } = chart;
+          ctx.save();
+          ctx.font = "bold 11px Poppins";
+          ctx.fillStyle = "#1e293b";
 
-        chart.getDatasetMeta(0).data.forEach((bar, index) => {
-          const valor = data[index];
-          ctx.fillText(valor, bar.x + 5, bar.y + 4);
-        });
+          chart.getDatasetMeta(0).data.forEach((bar, index) => {
+            const valor = data[index];
+            ctx.fillText(valor, bar.x + 5, bar.y + 4);
+          });
 
-        ctx.restore();
-      }
-    }]
+          ctx.restore();
+        },
+      },
+    ],
   });
 }
-
 
 function quebrarTexto(texto, tamanhoLinha) {
   const palavras = texto.split(" ");
   const linhas = [];
   let linhaAtual = "";
 
-  palavras.forEach(palavra => {
+  palavras.forEach((palavra) => {
     if ((linhaAtual + palavra).length > tamanhoLinha) {
       linhas.push(linhaAtual.trim());
       linhaAtual = "";
@@ -1310,7 +1389,6 @@ function quebrarTexto(texto, tamanhoLinha) {
   linhas.push(linhaAtual.trim());
   return linhas;
 }
-
 
 // ===================================
 // INICIALIZAÇÃO DO SISTEMA
@@ -1328,7 +1406,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   carregarSelectBairros();
 
   ativarBuscaSelectBairro(); // 🔥 AQUI
-  carregarFiltroAno(); // ✅ agora funciona
+  console.log("🔥 Dados carregados do Firestore");
+  carregarFiltroAno();
+  // ✅ agora funciona
   atualizarSecao("atendimento");
 
   console.log("✅ Sistema MedControl inicializado com sucesso!");
@@ -1408,7 +1488,17 @@ function filtrarRelacaoAtendimentos() {
 
   // 📅 Mês
   if (mes) {
-    filtrados = filtrados.filter((a) => a.data.split("-")[1] === mes);
+    atendimentos = atendimentos.filter((a) => {
+      const data = new Date(a.data + "T00:00:00");
+      const mesAtendimento = String(data.getMonth() + 1).padStart(2, "0");
+      return mesAtendimento === mes;
+    });
+
+    saidas = saidas.filter((s) => {
+      const data = new Date(s.data + "T00:00:00");
+      const mesSaida = String(data.getMonth() + 1).padStart(2, "0");
+      return mesSaida === mes;
+    });
   }
 
   // 👤 Paciente
@@ -1582,8 +1672,6 @@ function baixarPdfAtendimentos() {
   });
 
   window.open(doc.output("bloburl"), "_blank");
-
-
 }
 
 const LISTA_MEDICAMENTOS = [
@@ -1955,7 +2043,6 @@ async function excluirSaida(id) {
   }
 }
 
-
 // 🔓 expõe funções para o HTML (onclick)
 window.adicionarMedicamentoReceita = adicionarMedicamentoReceita;
 window.filtrarRelacaoAtendimentos = filtrarRelacaoAtendimentos;
@@ -1969,3 +2056,4 @@ window.atualizarLotes = atualizarLotes;
 // 🔥 ADICIONE ESSAS DUAS
 window.filtrarEstoque = filtrarEstoque;
 window.limparFiltrosEstoque = limparFiltrosEstoque;
+window.carregarRelatorios = carregarRelatorios;
