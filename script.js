@@ -745,21 +745,70 @@ function atualizarCardsEstoque() {
     medicamentosUnicos.length;
 }
 
+function atualizarCardsRelatorio(atendimentos, saidas) {
+
+  const totalAtendimentos = atendimentos.length;
+  const elTotalAtend = document.getElementById("cardTotalAtendimentos");
+  if (elTotalAtend) {
+    elTotalAtend.textContent = totalAtendimentos;
+  }
+
+  const totalMedicamentos = saidas.reduce((sum, s) => sum + s.quantidade, 0);
+  const elTotalMed = document.getElementById("cardTotalMedicamentos");
+  if (elTotalMed) {
+    elTotalMed.textContent = totalMedicamentos;
+  }
+
+  const bairrosConta = {};
+  atendimentos.forEach(a => {
+    bairrosConta[a.bairro] = (bairrosConta[a.bairro] || 0) + 1;
+  });
+
+  let topBairro = "-";
+  let max = 0;
+
+  for (const bairro in bairrosConta) {
+    if (bairrosConta[bairro] > max) {
+      max = bairrosConta[bairro];
+      topBairro = bairro;
+    }
+  }
+
+  const elTopBairro = document.getElementById("cardTopBairro");
+  if (elTopBairro) {
+    elTopBairro.textContent = topBairro;
+  }
+}
+
+
 // ===================================
 // RELATÓRIOS E GRÁFICOS
 // ===================================
 
 function carregarRelatorios() {
-  carregarTabelaBairros();
-  carregarTabelaMedicamentosRelatorio();
+  const ano = document.getElementById("relatorioAno")?.value;
+  const mes = document.getElementById("relatorioMes")?.value;
 
-  setTimeout(() => {
-    if (document.getElementById("relatorios")?.classList.contains("active")) {
-      criarGraficoBairros();
-      criarGraficoMedicamentos();
-    }
-  }, 200);
+  let atendimentos = [...state.atendimentos];
+  let saidas = [...state.saidas];
+
+  if (ano) {
+    atendimentos = atendimentos.filter(a => a.data.startsWith(ano));
+    saidas = saidas.filter(s => s.data.startsWith(ano));
+  }
+
+  if (mes) {
+    atendimentos = atendimentos.filter(a => a.data.split("-")[1] === mes);
+    saidas = saidas.filter(s => s.data.split("-")[1] === mes);
+  }
+
+  atualizarCardsRelatorio(atendimentos, saidas);
+  criarGraficoAtendimentosMes(atendimentos);
+  criarGraficoMedicamentos(saidas);
+  criarGraficoBairrosFiltrado(atendimentos); // 🔥 NOVO
 }
+
+
 
 function carregarTabelaBairros() {
   const tbody = document.getElementById("tabelaBairros");
@@ -927,7 +976,6 @@ function criarGraficoBairros() {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false,
       plugins: {
         legend: {
           position: "bottom",
@@ -954,6 +1002,65 @@ function criarGraficoBairros() {
     },
   });
 }
+
+function criarGraficoBairrosFiltrado(atendimentos) {
+  const canvas = document.getElementById("chartBairros");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  if (state.charts.bairros) {
+    state.charts.bairros.destroy();
+  }
+
+  const bairrosConta = {};
+
+  atendimentos.forEach((a) => {
+    bairrosConta[a.bairro] = (bairrosConta[a.bairro] || 0) + 1;
+  });
+
+  const labels = Object.keys(bairrosConta);
+  const data = Object.values(bairrosConta);
+
+  if (!labels.length) {
+    ctx.parentElement.innerHTML =
+      '<p style="text-align:center;padding:2rem;color:#94a3b8;">Nenhum dado disponível</p>';
+    return;
+  }
+
+  state.charts.bairros = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: [
+          "#0ea5e9",
+          "#8b5cf6",
+          "#10b981",
+          "#f59e0b",
+          "#ef4444",
+          "#06b6d4",
+          "#6366f1",
+          "#f43f5e"
+        ],
+        borderWidth: 2,
+        borderColor: "#fff"
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom"
+        }
+      }
+    }
+  });
+}
+
 
 function gerarRelatorioDiario() {
   const ano = document.getElementById("relatorioAno")?.value;
@@ -1001,47 +1108,49 @@ function gerarRelatorioDiario() {
   });
 }
 
-function criarGraficoMedicamentos() {
-  const canvas = document.getElementById("chartMedicamentos");
+function criarGraficoAtendimentosMes(atendimentos) {
+  const canvas = document.getElementById("chartAtendimentosMes");
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
   // Destrói gráfico anterior se existir
-  if (state.charts.medicamentos) {
-    state.charts.medicamentos.destroy();
+  if (state.charts.atendimentosMes) {
+    state.charts.atendimentosMes.destroy();
   }
 
-  // Prepara dados
-  const medicamentosConta = {};
-  state.saidas.forEach((saida) => {
-    medicamentosConta[saida.medicamento] =
-      (medicamentosConta[saida.medicamento] || 0) + saida.quantidade;
+  // 🔎 Agrupa por mês
+  const porMes = {};
+
+  atendimentos.forEach((a) => {
+    const mes = a.data.substring(0, 7); // YYYY-MM
+    porMes[mes] = (porMes[mes] || 0) + 1;
   });
 
-  const labels = Object.keys(medicamentosConta);
-  const data = Object.values(medicamentosConta);
+  const labels = Object.keys(porMes).sort();
+  const data = labels.map((mes) => porMes[mes]);
 
   if (labels.length === 0) {
     ctx.parentElement.innerHTML =
-      '<p style="text-align: center; padding: 2rem; color: #94a3b8;">Nenhum dado disponível</p>';
+      '<p style="text-align:center;padding:2rem;color:#94a3b8;">Nenhum dado disponível</p>';
     return;
   }
 
-  // Cria gráfico
-  state.charts.medicamentos = new Chart(ctx, {
-    type: "bar",
+  state.charts.atendimentosMes = new Chart(ctx, {
+    type: "line",
     data: {
       labels: labels,
       datasets: [
         {
-          label: "Quantidade Distribuída",
+          label: "Atendimentos por Mês",
           data: data,
-          backgroundColor: "rgba(14, 165, 233, 0.8)",
-          borderColor: "rgba(14, 165, 233, 1)",
-          borderWidth: 2,
-          borderRadius: 8,
+          borderColor: "rgba(139, 92, 246, 1)",
+          backgroundColor: "rgba(139, 92, 246, 0.2)",
+          borderWidth: 3,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 4,
         },
       ],
     },
@@ -1050,49 +1159,158 @@ function criarGraficoMedicamentos() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: false,
-        },
-        tooltip: {
-          backgroundColor: "rgba(30, 41, 59, 0.95)",
-          padding: 12,
-          titleFont: {
-            family: "Poppins",
-            size: 14,
-          },
-          bodyFont: {
-            family: "Poppins",
-            size: 12,
-          },
+          display: true,
         },
       },
       scales: {
         y: {
           beginAtZero: true,
-          ticks: {
-            font: {
-              family: "Poppins",
-              size: 11,
-            },
-          },
-          grid: {
-            color: "rgba(226, 232, 240, 0.5)",
-          },
-        },
-        x: {
-          ticks: {
-            font: {
-              family: "Poppins",
-              size: 11,
-            },
-          },
-          grid: {
-            display: false,
-          },
         },
       },
     },
   });
 }
+
+
+function criarGraficoMedicamentos(saidasFiltradas) {
+  const canvas = document.getElementById("chartMedicamentos");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  if (state.charts.medicamentos) {
+    state.charts.medicamentos.destroy();
+  }
+
+  const medicamentosConta = {};
+
+  saidasFiltradas.forEach((saida) => {
+    medicamentosConta[saida.medicamento] =
+      (medicamentosConta[saida.medicamento] || 0) + saida.quantidade;
+  });
+
+  const ordenado = Object.entries(medicamentosConta)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15);
+
+  const totalGeral = ordenado.reduce((sum, item) => sum + item[1], 0);
+
+  const labels = ordenado.map((item, index) => {
+    let medalha = `#${index + 1}`;
+
+    if (index === 0) medalha = "🥇 1º";
+    if (index === 1) medalha = "🥈 2º";
+    if (index === 2) medalha = "🥉 3º";
+
+    return quebrarTexto(`${medalha} - ${item[0]}`, 32);
+  });
+
+  const data = ordenado.map((item) => item[1]);
+
+  if (!labels.length) {
+    ctx.parentElement.innerHTML =
+      '<p style="text-align:center;padding:2rem;color:#94a3b8;">Nenhum dado disponível</p>';
+    return;
+  }
+
+  // 🎨 Gradientes diferentes para Top 3
+  const cores = ordenado.map((_, index) => {
+    const gradient = ctx.createLinearGradient(0, 0, 600, 0);
+
+    if (index === 0) {
+      gradient.addColorStop(0, "#f59e0b");
+      gradient.addColorStop(1, "#fbbf24");
+    } else if (index === 1) {
+      gradient.addColorStop(0, "#94a3b8");
+      gradient.addColorStop(1, "#cbd5e1");
+    } else if (index === 2) {
+      gradient.addColorStop(0, "#b45309");
+      gradient.addColorStop(1, "#f97316");
+    } else {
+      gradient.addColorStop(0, "#0ea5e9");
+      gradient.addColorStop(1, "#8b5cf6");
+    }
+
+    return gradient;
+  });
+
+  state.charts.medicamentos = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: cores,
+        borderRadius: 6,
+        barThickness: 14
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: "y",
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const valor = context.raw;
+              const percentual = ((valor / totalGeral) * 100).toFixed(1);
+              return ` ${valor} unidades (${percentual}%)`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true
+        },
+        y: {
+          ticks: {
+            font: { size: 11 }
+          },
+          grid: { display: false }
+        }
+      }
+    },
+    plugins: [{
+      id: 'valorNaBarra',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        ctx.save();
+        ctx.font = "bold 11px Poppins";
+        ctx.fillStyle = "#1e293b";
+
+        chart.getDatasetMeta(0).data.forEach((bar, index) => {
+          const valor = data[index];
+          ctx.fillText(valor, bar.x + 5, bar.y + 4);
+        });
+
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+
+function quebrarTexto(texto, tamanhoLinha) {
+  const palavras = texto.split(" ");
+  const linhas = [];
+  let linhaAtual = "";
+
+  palavras.forEach(palavra => {
+    if ((linhaAtual + palavra).length > tamanhoLinha) {
+      linhas.push(linhaAtual.trim());
+      linhaAtual = "";
+    }
+    linhaAtual += palavra + " ";
+  });
+
+  linhas.push(linhaAtual.trim());
+  return linhas;
+}
+
 
 // ===================================
 // INICIALIZAÇÃO DO SISTEMA
@@ -1364,6 +1582,8 @@ function baixarPdfAtendimentos() {
   });
 
   window.open(doc.output("bloburl"), "_blank");
+
+
 }
 
 const LISTA_MEDICAMENTOS = [
@@ -1717,15 +1937,24 @@ function ativarBuscaSelectBairro() {
   });
 }
 
-function excluirSaida(id) {
+async function excluirSaida(id) {
   if (!confirm("Deseja realmente excluir esta saída?")) return;
 
-  state.saidas = state.saidas.filter((s) => s.id !== id);
-  carregarTabelaSaidas();
-  atualizarCardsEstoque();
+  try {
+    await deleteDoc(doc(db, "saidas", id));
 
-  mostrarToast("Saída excluída com sucesso!", "success");
+    state.saidas = state.saidas.filter((s) => s.id !== id);
+
+    carregarTabelaSaidas();
+    atualizarCardsEstoque();
+
+    mostrarToast("Saída excluída com sucesso!", "success");
+  } catch (err) {
+    console.error(err);
+    mostrarToast("Erro ao excluir saída", "error");
+  }
 }
+
 
 // 🔓 expõe funções para o HTML (onclick)
 window.adicionarMedicamentoReceita = adicionarMedicamentoReceita;

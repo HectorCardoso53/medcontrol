@@ -527,19 +527,24 @@ body {
 }
 
 /* ===================================
-   GRÁFICOS
-   =================================== */
+   GRÁFICOS - CORREÇÃO DEFINITIVA
+=================================== */
+
 .charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: var(--spacing-xl);
-    margin-bottom: var(--spacing-xl);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
 }
 
 .chart-container {
-    position: relative;
-    height: 300px;
-    padding: var(--spacing-md);
+  position: relative;
+  width: 100%;
+  height: 400px;   /* 🔥 altura real maior */
+}
+
+.card .chart-container canvas {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* ===================================
@@ -1012,4 +1017,9 @@ body {
     margin-top: var(--spacing-sm);
     font-size: 0.85rem;
     color: var(--text-secondary);
+}
+
+
+canvas {
+  display: block;
 }
