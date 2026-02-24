@@ -64,15 +64,28 @@
                 <div class="card">
                     <form id="formAtendimento" class="form">
                         <div class="form-grid">
+                            <div class="form-group">
+                                <label for="nomePaciente">Nome do Paciente *</label>
+                                <input type="text" id="nomePaciente" placeholder="Ex: João Silva" required>
+                            </div>
+                            <!-- Endereço + Bairro -->
+                            <div class="form-group">
+                                <label for="endereco">Endereço *</label>
+                                <input type="text" id="endereco" placeholder="Ex: Rua das Flores, 123" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="bairro">Bairro *</label>
+                                <select id="bairro" required>
+                                    <option value="">Selecione</option>
+                                </select>
+                            </div>
+
+
                             <!-- Data + Nome -->
                             <div class="form-group">
                                 <label for="dataAtendimento">Data</label>
                                 <input type="date" id="dataAtendimento">
-                            </div>
-
-                            <div class="form-group">
-                                <label for="nomePaciente">Nome do Paciente *</label>
-                                <input type="text" id="nomePaciente" placeholder="Ex: João Silva" required>
                             </div>
 
                             <!-- RG + Cartão SUS + Contato -->
@@ -91,19 +104,7 @@
                                 <input type="tel" id="contato" placeholder="Opcional">
                             </div>
 
-                            <!-- Endereço + Bairro -->
-                            <div class="form-group">
-                                <label for="endereco">Endereço *</label>
-                                <input type="text" id="endereco" placeholder="Ex: Rua das Flores, 123" required>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="bairro">Bairro *</label>
-                                <select id="bairro" required>
-                                    <option value="">Selecione</option>
-                                </select>
-                            </div>
-
+                            
                             <!-- Quantidade -->
                             <div class="form-group full-width">
                                 <label>Medicamentos da Receita</label>
@@ -142,7 +143,7 @@
                 <div class="card">
                     <form id="formMedicamentos" class="form">
                         <div class="form-grid">
-                        
+
                             <div class="form-group">
                                 <label for="descricaoMed">Medicamento</label>
                                 <select id="descricaoMed" required>
@@ -419,7 +420,7 @@
                     </div>
                 </div>
             </section>
-         
+
             <!-- SEÇÃO: RELATÓRIOS -->
             <!-- ========================================= -->
             <section id="relatorios" class="section">
@@ -501,7 +502,7 @@
                                 Ranking de Atendimentos por Paciente
                             </h3>
 
-                
+
 
                         </div>
 
@@ -539,7 +540,7 @@
 
             </section>
 
-            
+
         </div>
     </main>
 
