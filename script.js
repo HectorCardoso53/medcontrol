@@ -499,7 +499,9 @@ function inicializarFormMedicamentos() {
 }
 
 function atualizarBotaoMedicamento(modo = "cadastro") {
-  
+  const btnSalvar = document.querySelector(
+    "#formMedicamentos button[type='submit']"
+  );
 
   if (!btnSalvar) return;
 
@@ -605,15 +607,7 @@ window.editarMedicamentoEstoque = function (id) {
   }, 150);
 };
 
-// 🔥 volta botão ao normal
-const btnSalvar = document.querySelector(
-  "#formMedicamentos button[type='submit']",
-);
-if (btnSalvar) {
-  btnSalvar.textContent = "Salvar Medicamento";
-  btnSalvar.classList.remove("btn-warning");
-  btnSalvar.classList.add("btn-primary");
-}
+
 
 async function excluirMedicamento(id) {
   if (!confirm("Deseja realmente excluir este medicamento?")) return;
@@ -714,7 +708,7 @@ function filtrarEstoque() {
   if (state.medicamentos.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" class="empty-state">
+        <td colspan="9" class="empty-state">
           Nenhum medicamento em estoque
         </td>
       </tr>
@@ -805,11 +799,18 @@ function filtrarEstoque() {
   <td>${badgeEstoque}</td>
   <td>${badgeValidade}</td>
   <td>
+  <div style="display:flex; gap:6px;">
       <button class="btn btn-warning"
           onclick="editarMedicamentoEstoque('${med.id}')">
-          ✏️ Editar
+          ✏️
       </button>
-  </td>
+
+      <button class="btn btn-danger"
+          onclick="excluirMedicamento('${med.id}')">
+          🗑️
+      </button>
+  </div>
+</td>
 `;
 
     tbody.appendChild(tr);
@@ -1002,7 +1003,7 @@ async function excluirMedicamentoEstoque(descricao) {
     );
     state.saidas = state.saidas.filter((s) => s.medicamento !== descricao);
 
-    carregarTabelaEstoque();
+    filtrarEstoque();
     carregarTabelaMedicamentos();
     carregarTabelaSaidas();
     atualizarCardsEstoque();
