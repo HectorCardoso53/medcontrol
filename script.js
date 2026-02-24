@@ -7,6 +7,7 @@ import {
   doc,
   query,
   orderBy,
+  updateDoc,
 } from "./firebase.js";
 
 let selectMedicamentoInstance = null;
@@ -194,59 +195,69 @@ function inicializarFormAtendimento() {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
+    const nomePaciente = document.getElementById("nomePaciente").value.trim();
+    const bairro = document.getElementById("bairro").value;
+
+    if (!nomePaciente || !bairro) {
+      mostrarToast("Preencha nome do paciente e bairro.", "error");
+      return;
+    }
+
     const itens = [];
     let erroEstoque = false;
 
     const linhas = document.querySelectorAll(
-      "#listaMedicamentosReceita .form-grid",
+      "#listaMedicamentosReceita .form-grid"
     );
 
     for (const linha of linhas) {
       const medicamento = linha.querySelector(".medicamento-select")?.value;
       const lote = linha.querySelector(".lote-select")?.value;
-      const quantidade = parseInt(
-        linha.querySelector(".quantidade-input")?.value,
-      );
+      const quantidadeInput = linha.querySelector(".quantidade-input");
+      const quantidade = parseInt(quantidadeInput?.value);
 
-      // 🔎 Validação básica
+      // Remove borda vermelha antes de validar
+      quantidadeInput.style.border = "";
+
       if (!medicamento || !lote || !quantidade || quantidade <= 0) {
         mostrarToast(
           "Preencha medicamento, lote e quantidade corretamente.",
-          "error",
+          "error"
         );
         erroEstoque = true;
         break;
       }
 
-      // 🔎 Busca lote no state
       const medInfo = state.medicamentos.find(
-        (m) => m.descricao === medicamento && m.lote === lote,
+        (m) => m.descricao === medicamento && m.lote === lote
       );
 
       if (!medInfo) {
         mostrarToast(
           `Lote ${lote} não encontrado para ${medicamento}`,
-          "error",
+          "error"
         );
         erroEstoque = true;
         break;
       }
 
       // 🔥 Calcula saldo real do lote
-      const totalDistribuido = state.saidas
-        .filter((s) => s.medicamento === medicamento && s.lote === lote)
-        .reduce((sum, s) => sum + s.quantidade, 0);
+      const totalDistribuido = state.saidas.reduce((sum, s) => {
+        if (s.medicamento === medicamento && s.lote === lote) {
+          return sum + s.quantidade;
+        }
+        return sum;
+      }, 0);
 
       const saldoDisponivel = medInfo.quantidade - totalDistribuido;
 
       if (saldoDisponivel < quantidade) {
         mostrarToast(
           `⚠ Estoque insuficiente no lote ${lote}. Disponível: ${saldoDisponivel}`,
-          "error",
+          "error"
         );
 
-        linha.querySelector(".quantidade-input").style.border = "2px solid red";
-
+        quantidadeInput.style.border = "2px solid red";
         erroEstoque = true;
         break;
       }
@@ -263,12 +274,12 @@ function inicializarFormAtendimento() {
 
     const atendimento = {
       data: dataInput.value,
-      nomePaciente: document.getElementById("nomePaciente").value,
+      nomePaciente,
       rg: document.getElementById("rg").value || "",
       cartaoSus: document.getElementById("cartaoSus").value || "",
       contato: document.getElementById("contato").value || "",
-      endereco: document.getElementById("endereco").value,
-      bairro: document.getElementById("bairro").value,
+      endereco: document.getElementById("endereco").value || "",
+      bairro,
       itens,
       criadoEm: new Date(),
     };
@@ -278,8 +289,8 @@ function inicializarFormAtendimento() {
       const ref = await addDoc(collection(db, "atendimentos"), atendimento);
       state.atendimentos.push({ id: ref.id, ...atendimento });
 
-      // 🔥 Registra saídas por lote
-      for (const item of itens) {
+      // 🔥 Salva saídas
+      const promises = itens.map((item) => {
         const saida = {
           data: atendimento.data,
           medicamento: item.medicamento,
@@ -288,24 +299,20 @@ function inicializarFormAtendimento() {
           referencia: atendimento.nomePaciente,
         };
 
-        const saidaRef = await addDoc(collection(db, "saidas"), saida);
-        state.saidas.push({ id: saidaRef.id, ...saida });
-      }
+        return addDoc(collection(db, "saidas"), saida).then((saidaRef) => {
+          state.saidas.push({ id: saidaRef.id, ...saida });
+        });
+      });
+
+      await Promise.all(promises);
 
       // ===============================
-      // 🔥 LIMPEZA CORRETA DO FORMULÁRIO
+      // 🔥 LIMPEZA
       // ===============================
 
       form.reset();
       dataInput.value = new Date().toISOString().split("T")[0];
 
-      // 🔥 LIMPA TOMSELECT CORRETAMENTE
-      if (selectMedicamentoInstance) {
-        selectMedicamentoInstance.clear();
-        selectMedicamentoInstance.setTextboxValue("");
-      }
-
-      // Remove todos os medicamentos adicionados
       document.getElementById("listaMedicamentosReceita").innerHTML = "";
 
       // Atualiza telas
@@ -314,6 +321,7 @@ function inicializarFormAtendimento() {
       atualizarCardsEstoque();
 
       mostrarToast("Atendimento salvo com sucesso!", "success");
+
     } catch (err) {
       console.error(err);
       mostrarToast("Erro ao salvar atendimento", "error");
@@ -426,13 +434,12 @@ function inicializarFormMedicamentos() {
       document.getElementById("quantidadeRecebida").value,
     );
 
-    if (quantidade <= 0) {
+    if (!quantidade || quantidade <= 0) {
       mostrarToast("Quantidade deve ser maior que zero!", "error");
       return;
     }
 
     const medicamento = {
-      codigo: document.getElementById("codigoMed").value,
       descricao: document.getElementById("descricaoMed").value,
       dataRecebimento: document.getElementById("dataRecebimento").value,
       lote: document.getElementById("lote").value,
@@ -442,9 +449,37 @@ function inicializarFormMedicamentos() {
     };
 
     try {
-      const ref = await addDoc(collection(db, "medicamentos"), medicamento);
-      state.medicamentos.push({ id: ref.id, ...medicamento });
+      // 🔥 SE ESTIVER EDITANDO
+      if (state.editandoMedicamentoId) {
+        await updateDoc(
+          doc(db, "medicamentos", state.editandoMedicamentoId),
+          medicamento,
+        );
 
+        // Atualiza no state local
+        const index = state.medicamentos.findIndex(
+          (m) => m.id === state.editandoMedicamentoId,
+        );
+
+        if (index !== -1) {
+          state.medicamentos[index] = {
+            id: state.editandoMedicamentoId,
+            ...medicamento,
+          };
+        }
+
+        mostrarToast("Medicamento atualizado com sucesso! ✏️", "success");
+
+        state.editandoMedicamentoId = null;
+      } else {
+        // 🔥 NOVO CADASTRO
+        const ref = await addDoc(collection(db, "medicamentos"), medicamento);
+        state.medicamentos.push({ id: ref.id, ...medicamento });
+
+        mostrarToast("Medicamento salvo no Firestore!", "success");
+      }
+
+      // 🔥 Reset visual
       form.reset();
       dataInput.value = new Date().toISOString().split("T")[0];
 
@@ -454,9 +489,8 @@ function inicializarFormMedicamentos() {
 
       carregarTabelaMedicamentos();
       carregarSelectMedicamentos();
+      filtrarEstoque();
       atualizarCardsEstoque();
-
-      mostrarToast("Medicamento salvo no Firestore!", "success");
     } catch (error) {
       console.error(error);
       mostrarToast("Erro ao salvar no banco", "error");
@@ -464,9 +498,31 @@ function inicializarFormMedicamentos() {
   });
 }
 
+function atualizarBotaoMedicamento(modo = "cadastro") {
+  
+
+  if (!btnSalvar) return;
+
+  if (modo === "edicao") {
+    btnSalvar.innerHTML = `
+      <span class="icon">✏️</span>
+      Atualizar Medicamento
+    `;
+    btnSalvar.classList.remove("btn-primary");
+    btnSalvar.classList.add("btn-warning");
+  } else {
+    btnSalvar.innerHTML = `
+      <span class="icon">✓</span>
+      Cadastrar Medicamento
+    `;
+    btnSalvar.classList.remove("btn-warning");
+    btnSalvar.classList.add("btn-primary");
+  }
+}
+
 function carregarTabelaMedicamentos() {
   const tbody = document.getElementById("tabelaMedicamentos");
-  if (!tbody) return; // ⛔ proteção TOTAL
+  if (!tbody) return;
 
   tbody.innerHTML = "";
 
@@ -482,29 +538,99 @@ function carregarTabelaMedicamentos() {
 
   medicamentosOrdenados.forEach((med) => {
     const tr = document.createElement("tr");
+
     tr.innerHTML = `
-            <td><code>${med.codigo}</code></td>
-            <td><strong>${med.descricao}</strong></td>
-            <td>${med.lote}</td>
-            <td>${formatarData(med.dataValidade)}</td>
-            <td>${med.quantidade}</td>
-            <td>
-                <button class="btn btn-danger" onclick="excluirMedicamento('${med.id}')">
-                    🗑️ Excluir
-                </button>
-            </td>
-        `;
+      <td><strong>${med.descricao}</strong></td>
+      <td>${med.lote}</td>
+      <td>${formatarData(med.dataValidade)}</td>
+      <td>${med.quantidade}</td>
+      <td>
+        <button class="btn btn-warning"
+          onclick="editarMedicamentoEstoque('${med.id}')">
+          ✏️ Editar
+        </button>
+      </td>
+    `;
+
     tbody.appendChild(tr);
   });
 }
 
-function excluirMedicamento(id) {
-  if (confirm("Deseja realmente excluir este medicamento?")) {
+window.editarMedicamentoEstoque = function (id) {
+  const med = state.medicamentos.find((m) => m.id === id);
+  if (!med) return;
+
+  // 🔹 Ativa aba de medicamentos
+  const btn = document.querySelector('[data-section="medicamentos"]');
+  if (btn) btn.click();
+
+  // 🔥 Aguarda renderização da aba
+  setTimeout(() => {
+    const descricaoInput = document.getElementById("descricaoMed");
+
+    if (selectMedicamentoInstance) {
+
+      // Se opção não existir, adiciona
+      if (!selectMedicamentoInstance.options[med.descricao]) {
+        selectMedicamentoInstance.addOption({
+          value: med.descricao,
+          text: med.descricao,
+        });
+      }
+
+      selectMedicamentoInstance.setValue(med.descricao);
+      selectMedicamentoInstance.disable(); // 🔒 trava nome na edição
+
+    } else if (descricaoInput) {
+      descricaoInput.value = med.descricao;
+      descricaoInput.disabled = true; // 🔒 trava se não usar TomSelect
+    }
+
+    document.getElementById("dataRecebimento").value = med.dataRecebimento;
+    document.getElementById("lote").value = med.lote;
+    document.getElementById("dataValidade").value = med.dataValidade;
+    document.getElementById("quantidadeRecebida").value = med.quantidade;
+
+    state.editandoMedicamentoId = id;
+
+    // 🔥 Usa sua função padrão
+    atualizarBotaoMedicamento("edicao");
+
+    document
+      .getElementById("formMedicamentos")
+      .scrollIntoView({ behavior: "smooth", block: "start" });
+
+    mostrarToast("Modo edição ativado ✏️", "warning");
+
+  }, 150);
+};
+
+// 🔥 volta botão ao normal
+const btnSalvar = document.querySelector(
+  "#formMedicamentos button[type='submit']",
+);
+if (btnSalvar) {
+  btnSalvar.textContent = "Salvar Medicamento";
+  btnSalvar.classList.remove("btn-warning");
+  btnSalvar.classList.add("btn-primary");
+}
+
+async function excluirMedicamento(id) {
+  if (!confirm("Deseja realmente excluir este medicamento?")) return;
+
+  try {
+    await deleteDoc(doc(db, "medicamentos", id));
+
     state.medicamentos = state.medicamentos.filter((m) => m.id !== id);
 
     carregarTabelaMedicamentos();
-    carregarSelectMedicamentos();
+    filtrarEstoque();
+    atualizarCardsEstoque();
+
     mostrarToast("Medicamento excluído com sucesso!", "success");
+  } catch (err) {
+    console.error(err);
+    mostrarToast("Erro ao excluir medicamento", "error");
   }
 }
 
@@ -670,15 +796,21 @@ function filtrarEstoque() {
     tr.className = linhaClasse;
 
     tr.innerHTML = `
-      <td><strong>${med.descricao}</strong></td>
-      <td>${med.lote}</td>
-      <td>${formatarData(med.dataValidade)}</td>
-      <td>${med.quantidade}</td>
-      <td>${med.totalDistribuido}</td>
-      <td><strong>${med.saldo}</strong></td>
-      <td>${badgeEstoque}</td>
-      <td>${badgeValidade}</td>
-    `;
+  <td><strong>${med.descricao}</strong></td>
+  <td>${med.lote}</td>
+  <td>${formatarData(med.dataValidade)}</td>
+  <td>${med.quantidade}</td>
+  <td>${med.totalDistribuido}</td>
+  <td><strong>${med.saldo}</strong></td>
+  <td>${badgeEstoque}</td>
+  <td>${badgeValidade}</td>
+  <td>
+      <button class="btn btn-warning"
+          onclick="editarMedicamentoEstoque('${med.id}')">
+          ✏️ Editar
+      </button>
+  </td>
+`;
 
     tbody.appendChild(tr);
   });
@@ -807,7 +939,6 @@ function carregarRelatorios() {
   criarGraficoEvolucao(atendimentos);
 }
 
-
 function carregarTabelaBairros() {
   const tbody = document.getElementById("tabelaBairros");
   tbody.innerHTML = "";
@@ -876,8 +1007,6 @@ async function excluirMedicamentoEstoque(descricao) {
     carregarTabelaSaidas();
     atualizarCardsEstoque();
     criarGraficoEvolucao(state.atendimentos);
-
-
 
     mostrarToast("Medicamento excluído do estoque com sucesso!", "success");
   } catch (err) {
@@ -1019,8 +1148,7 @@ function criarGraficoAtendimentosPorNome(atendimentos) {
   const pacientesConta = {};
 
   atendimentos.forEach((a) => {
-    pacientesConta[a.nomePaciente] =
-      (pacientesConta[a.nomePaciente] || 0) + 1;
+    pacientesConta[a.nomePaciente] = (pacientesConta[a.nomePaciente] || 0) + 1;
   });
 
   const ordenado = Object.entries(pacientesConta)
@@ -1029,26 +1157,28 @@ function criarGraficoAtendimentosPorNome(atendimentos) {
 
   if (!ordenado.length) return;
 
-  const labels = ordenado.map(item => item[0]);
-  const data = ordenado.map(item => item[1]);
+  const labels = ordenado.map((item) => item[0]);
+  const data = ordenado.map((item) => item[1]);
 
   const cores = ordenado.map((_, index) => {
-    if (index === 0) return "#f59e0b";   // 🥇 Ouro
-    if (index === 1) return "#94a3b8";   // 🥈 Prata
-    if (index === 2) return "#f97316";   // 🥉 Bronze
-    return "#0ea5e9";                    // Restante azul
+    if (index === 0) return "#f59e0b"; // 🥇 Ouro
+    if (index === 1) return "#94a3b8"; // 🥈 Prata
+    if (index === 2) return "#f97316"; // 🥉 Bronze
+    return "#0ea5e9"; // Restante azul
   });
 
   state.charts.atendimentosNome = new Chart(ctx, {
     type: "bar",
     data: {
       labels,
-      datasets: [{
-        data,
-        backgroundColor: cores,
-        borderRadius: 10,
-        barThickness: 35
-      }]
+      datasets: [
+        {
+          data,
+          backgroundColor: cores,
+          borderRadius: 10,
+          barThickness: 35,
+        },
+      ],
     },
     options: {
       responsive: true,
@@ -1057,29 +1187,26 @@ function criarGraficoAtendimentosPorNome(atendimentos) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: function(context) {
+            label: function (context) {
               return ` ${context.raw} atendimentos`;
-            }
-          }
-        }
+            },
+          },
+        },
       },
       scales: {
         x: {
           ticks: {
             maxRotation: 45,
-            minRotation: 45
-          }
+            minRotation: 45,
+          },
         },
         y: {
-          beginAtZero: true
-        }
-      }
-    }
+          beginAtZero: true,
+        },
+      },
+    },
   });
 }
-
-
-
 
 function criarGraficoBairrosFiltrado(atendimentos) {
   const canvas = document.getElementById("chartBairros");
@@ -1104,19 +1231,21 @@ function criarGraficoBairrosFiltrado(atendimentos) {
     type: "doughnut",
     data: {
       labels,
-      datasets: [{
-        data,
-        backgroundColor: [
-          "#6366f1",
-          "#8b5cf6",
-          "#ec4899",
-          "#f59e0b",
-          "#10b981",
-          "#ef4444"
-        ],
-        borderWidth: 2,
-        borderColor: "#fff"
-      }]
+      datasets: [
+        {
+          data,
+          backgroundColor: [
+            "#6366f1",
+            "#8b5cf6",
+            "#ec4899",
+            "#f59e0b",
+            "#10b981",
+            "#ef4444",
+          ],
+          borderWidth: 2,
+          borderColor: "#fff",
+        },
+      ],
     },
     options: {
       responsive: true,
@@ -1124,13 +1253,12 @@ function criarGraficoBairrosFiltrado(atendimentos) {
       cutout: "65%",
       plugins: {
         legend: {
-          position: "bottom"
-        }
-      }
-    }
+          position: "bottom",
+        },
+      },
+    },
   });
 }
-
 
 function gerarRelatorioDiario() {
   const ano = document.getElementById("relatorioAno")?.value;
@@ -1277,7 +1405,7 @@ function criarGraficoMedicamentos(saidasFiltradas) {
   }
 
   const limite = parseInt(
-    document.getElementById("filtroTopAtendimentos")?.value || 10
+    document.getElementById("filtroTopAtendimentos")?.value || 10,
   );
 
   const medicamentosConta = {};
@@ -1293,14 +1421,14 @@ function criarGraficoMedicamentos(saidasFiltradas) {
 
   if (!ordenado.length) return;
 
-  const labels = ordenado.map(item => {
+  const labels = ordenado.map((item) => {
     if (item[0].length > 35) {
       return item[0].substring(0, 35) + "...";
     }
     return item[0];
   });
 
-  const data = ordenado.map(item => item[1]);
+  const data = ordenado.map((item) => item[1]);
 
   // 🔥 aumenta altura dinamicamente
   canvas.parentElement.style.height = `${Math.max(300, labels.length * 45)}px`;
@@ -1313,43 +1441,43 @@ function criarGraficoMedicamentos(saidasFiltradas) {
     type: "bar",
     data: {
       labels,
-      datasets: [{
-        data,
-        backgroundColor: gradient,
-        borderRadius: 8,
-        barThickness: 25
-      }]
+      datasets: [
+        {
+          data,
+          backgroundColor: gradient,
+          borderRadius: 8,
+          barThickness: 25,
+        },
+      ],
     },
     options: {
       indexAxis: "y", // 🔥 horizontal
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false }
+        legend: { display: false },
       },
       scales: {
         x: {
           beginAtZero: true,
           grid: {
-            color: "rgba(148,163,184,0.1)"
-          }
+            color: "rgba(148,163,184,0.1)",
+          },
         },
         y: {
           grid: {
-            display: false
+            display: false,
           },
           ticks: {
             font: {
-              size: 10
-            }
-          }
-        }
-      }
-    }
+              size: 10,
+            },
+          },
+        },
+      },
+    },
   });
 }
-
-
 
 function quebrarTexto(texto, tamanhoLinha) {
   const palavras = texto.split(" ");
@@ -1466,7 +1594,7 @@ function criarGraficoEvolucao(atendimentos) {
   });
 
   const labels = Object.keys(porMes).sort();
-  const data = labels.map(m => porMes[m]);
+  const data = labels.map((m) => porMes[m]);
 
   if (!labels.length) return;
 
@@ -1479,31 +1607,33 @@ function criarGraficoEvolucao(atendimentos) {
     type: "line",
     data: {
       labels,
-      datasets: [{
-        label: "Atendimentos",
-        data,
-        fill: true,
-        backgroundColor: gradient,
-        borderColor: "#0ea5e9",
-        borderWidth: 3,
-        tension: 0.4, // 🔥 curva suave
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        pointBackgroundColor: "#ffffff",
-        pointBorderColor: "#0ea5e9",
-        pointBorderWidth: 3
-      }]
+      datasets: [
+        {
+          label: "Atendimentos",
+          data,
+          fill: true,
+          backgroundColor: gradient,
+          borderColor: "#0ea5e9",
+          borderWidth: 3,
+          tension: 0.4, // 🔥 curva suave
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: "#ffffff",
+          pointBorderColor: "#0ea5e9",
+          pointBorderWidth: 3,
+        },
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: {
         mode: "index",
-        intersect: false
+        intersect: false,
       },
       plugins: {
         legend: {
-          display: false
+          display: false,
         },
         tooltip: {
           backgroundColor: "#1e293b",
@@ -1512,41 +1642,39 @@ function criarGraficoEvolucao(atendimentos) {
           padding: 10,
           displayColors: false,
           callbacks: {
-            label: function(context) {
+            label: function (context) {
               return ` ${context.raw} atendimentos`;
-            }
-          }
-        }
+            },
+          },
+        },
       },
       scales: {
         x: {
           grid: {
-            display: false
+            display: false,
           },
           ticks: {
-            color: "#64748b"
-          }
+            color: "#64748b",
+          },
         },
         y: {
           beginAtZero: true,
           grid: {
-            color: "rgba(148,163,184,0.15)"
+            color: "rgba(148,163,184,0.15)",
           },
           ticks: {
             color: "#64748b",
-            precision: 0
-          }
-        }
+            precision: 0,
+          },
+        },
       },
       animation: {
         duration: 1200,
-        easing: "easeOutQuart"
-      }
-    }
+        easing: "easeOutQuart",
+      },
+    },
   });
 }
-
-
 
 function filtrarRelacaoAtendimentos() {
   const ano = document.getElementById("filtroAno")?.value;
@@ -1577,26 +1705,24 @@ function filtrarRelacaoAtendimentos() {
   // 👤 Paciente
   if (paciente) {
     filtrados = filtrados.filter((a) =>
-      a.nomePaciente.toLowerCase().includes(paciente)
+      a.nomePaciente.toLowerCase().includes(paciente),
     );
   }
 
   // 💊 Medicamento
   if (medicamento) {
     filtrados = filtrados.filter((a) =>
-      a.itens.some((i) =>
-        i.medicamento.toLowerCase().includes(medicamento)
-      )
+      a.itens.some((i) => i.medicamento.toLowerCase().includes(medicamento)),
     );
   }
 
   atendimentosFiltrados = filtrados;
   carregarRelacaoAtendimentos(filtrados);
 
-  document.getElementById("btnPdf").style.display =
-    filtrados.length ? "inline-flex" : "none";
+  document.getElementById("btnPdf").style.display = filtrados.length
+    ? "inline-flex"
+    : "none";
 }
-
 
 function baixarPdfAtendimentos() {
   if (!atendimentosFiltrados.length) {
@@ -1988,11 +2114,8 @@ function carregarSelectMedicamentosCadastro() {
   select.innerHTML =
     '<option value="">Selecione ou digite o medicamento</option>';
 
-  LISTA_MEDICAMENTOS
-    .slice() // 🔥 cria cópia (boa prática)
-    .sort((a, b) =>
-      a.localeCompare(b, "pt-BR", { sensitivity: "base" })
-    )
+  LISTA_MEDICAMENTOS.slice() // 🔥 cria cópia (boa prática)
+    .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
     .forEach((med) => {
       const option = document.createElement("option");
       option.value = med;
@@ -2002,7 +2125,6 @@ function carregarSelectMedicamentosCadastro() {
 
   console.log("✅ Total carregado:", LISTA_MEDICAMENTOS.length);
 }
-
 
 function ativarBuscaSelectMedicamento() {
   selectMedicamentoInstance = new TomSelect("#descricaoMed", {
