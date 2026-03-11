@@ -195,21 +195,15 @@ function inicializarFormAtendimento() {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-<<<<<<< HEAD
     const btnSalvar = form.querySelector("button[type='submit']");
     btnSalvar.disabled = true;
 
-=======
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
     const nomePaciente = document.getElementById("nomePaciente").value.trim();
     const bairro = document.getElementById("bairro").value;
 
     if (!nomePaciente || !bairro) {
       mostrarToast("Preencha nome do paciente e bairro.", "error");
-<<<<<<< HEAD
       btnSalvar.disabled = false;
-=======
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
       return;
     }
 
@@ -217,18 +211,13 @@ function inicializarFormAtendimento() {
     let erroEstoque = false;
 
     const linhas = document.querySelectorAll(
-<<<<<<< HEAD
       "#listaMedicamentosReceita .form-grid",
-=======
-      "#listaMedicamentosReceita .form-grid"
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
     );
 
     for (const linha of linhas) {
       const medicamento = linha.querySelector(".medicamento-select")?.value;
       const lote = linha.querySelector(".lote-select")?.value;
       const quantidadeInput = linha.querySelector(".quantidade-input");
-<<<<<<< HEAD
       const quantidade = parseInt(quantidadeInput?.value || 0);
 
       quantidadeInput.style.border = "";
@@ -237,47 +226,24 @@ function inicializarFormAtendimento() {
         mostrarToast(
           "Preencha medicamento, lote e quantidade corretamente.",
           "error",
-=======
-      const quantidade = parseInt(quantidadeInput?.value);
-
-      // Remove borda vermelha antes de validar
-      quantidadeInput.style.border = "";
-
-      if (!medicamento || !lote || !quantidade || quantidade <= 0) {
-        mostrarToast(
-          "Preencha medicamento, lote e quantidade corretamente.",
-          "error"
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
         );
         erroEstoque = true;
         break;
       }
 
       const medInfo = state.medicamentos.find(
-<<<<<<< HEAD
         (m) => m.descricao === medicamento && m.lote === lote,
-=======
-        (m) => m.descricao === medicamento && m.lote === lote
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
       );
 
       if (!medInfo) {
         mostrarToast(
           `Lote ${lote} não encontrado para ${medicamento}`,
-<<<<<<< HEAD
           "error",
-=======
-          "error"
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
         );
         erroEstoque = true;
         break;
       }
 
-<<<<<<< HEAD
-=======
-      // 🔥 Calcula saldo real do lote
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
       const totalDistribuido = state.saidas.reduce((sum, s) => {
         if (s.medicamento === medicamento && s.lote === lote) {
           return sum + s.quantidade;
@@ -290,11 +256,7 @@ function inicializarFormAtendimento() {
       if (saldoDisponivel < quantidade) {
         mostrarToast(
           `⚠ Estoque insuficiente no lote ${lote}. Disponível: ${saldoDisponivel}`,
-<<<<<<< HEAD
           "error",
-=======
-          "error"
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
         );
 
         quantidadeInput.style.border = "2px solid red";
@@ -305,7 +267,6 @@ function inicializarFormAtendimento() {
       itens.push({ medicamento, lote, quantidade });
     }
 
-<<<<<<< HEAD
     if (erroEstoque) {
       btnSalvar.disabled = false;
       return;
@@ -314,12 +275,6 @@ function inicializarFormAtendimento() {
     if (itens.length === 0) {
       mostrarToast("Adicione pelo menos um medicamento!", "error");
       btnSalvar.disabled = false;
-=======
-    if (erroEstoque) return;
-
-    if (itens.length === 0) {
-      mostrarToast("Adicione pelo menos um medicamento!", "error");
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
       return;
     }
 
@@ -336,19 +291,11 @@ function inicializarFormAtendimento() {
     };
 
     try {
-<<<<<<< HEAD
       // salva atendimento
       const ref = await addDoc(collection(db, "atendimentos"), atendimento);
       state.atendimentos.push({ id: ref.id, ...atendimento });
 
       // salva saídas
-=======
-      // 🔥 Salva atendimento
-      const ref = await addDoc(collection(db, "atendimentos"), atendimento);
-      state.atendimentos.push({ id: ref.id, ...atendimento });
-
-      // 🔥 Salva saídas
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
       const promises = itens.map((item) => {
         const saida = {
           data: atendimento.data,
@@ -365,7 +312,6 @@ function inicializarFormAtendimento() {
 
       await Promise.all(promises);
 
-<<<<<<< HEAD
       // limpeza do formulário
       form.reset();
       dataInput.value = new Date().toISOString().split("T")[0];
@@ -373,36 +319,17 @@ function inicializarFormAtendimento() {
 
       // atualização da interface
       carregarSelectMedicamentos();
-=======
-      // ===============================
-      // 🔥 LIMPEZA
-      // ===============================
-
-      form.reset();
-      dataInput.value = new Date().toISOString().split("T")[0];
-
-      document.getElementById("listaMedicamentosReceita").innerHTML = "";
-
-      // Atualiza telas
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
       carregarTabelaSaidas();
       filtrarEstoque();
       atualizarCardsEstoque();
 
       mostrarToast("Atendimento salvo com sucesso!", "success");
-<<<<<<< HEAD
-=======
-
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
     } catch (err) {
       console.error(err);
       mostrarToast("Erro ao salvar atendimento", "error");
     }
-<<<<<<< HEAD
 
     btnSalvar.disabled = false;
-=======
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
   });
 }
 
@@ -577,11 +504,7 @@ function inicializarFormMedicamentos() {
 
 function atualizarBotaoMedicamento(modo = "cadastro") {
   const btnSalvar = document.querySelector(
-<<<<<<< HEAD
     "#formMedicamentos button[type='submit']",
-=======
-    "#formMedicamentos button[type='submit']"
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
   );
 
   if (!btnSalvar) return;
@@ -652,10 +575,6 @@ window.editarMedicamentoEstoque = function (id) {
     const descricaoInput = document.getElementById("descricaoMed");
 
     if (selectMedicamentoInstance) {
-<<<<<<< HEAD
-=======
-
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
       // Se opção não existir, adiciona
       if (!selectMedicamentoInstance.options[med.descricao]) {
         selectMedicamentoInstance.addOption({
@@ -666,10 +585,6 @@ window.editarMedicamentoEstoque = function (id) {
 
       selectMedicamentoInstance.setValue(med.descricao);
       selectMedicamentoInstance.disable(); // 🔒 trava nome na edição
-<<<<<<< HEAD
-=======
-
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
     } else if (descricaoInput) {
       descricaoInput.value = med.descricao;
       descricaoInput.disabled = true; // 🔒 trava se não usar TomSelect
@@ -690,18 +605,9 @@ window.editarMedicamentoEstoque = function (id) {
       .scrollIntoView({ behavior: "smooth", block: "start" });
 
     mostrarToast("Modo edição ativado ✏️", "warning");
-<<<<<<< HEAD
   }, 150);
 };
 
-=======
-
-  }, 150);
-};
-
-
-
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
 async function excluirMedicamento(id) {
   if (!confirm("Deseja realmente excluir este medicamento?")) return;
 
@@ -2253,13 +2159,8 @@ function adicionarMedicamentoReceita() {
 
   div.innerHTML = `
         <div class="form-group">
-<<<<<<< HEAD
             <select class="medicamento-select" required>
                 <option value="">Digite para buscar medicamento</option>
-=======
-            <select class="medicamento-select" required onchange="atualizarLotes(this)">
-                <option value="">Medicamento</option>
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
                 ${gerarOpcoesMedicamentos()}
             </select>
         </div>
@@ -2283,7 +2184,6 @@ function adicionarMedicamentoReceita() {
     `;
 
   container.appendChild(div);
-<<<<<<< HEAD
 
   // 🔥 ATIVA BUSCA
   const select = div.querySelector(".medicamento-select");
@@ -2300,10 +2200,6 @@ function adicionarMedicamentoReceita() {
     }
   });
 }
-=======
-}
-
->>>>>>> 4b5d844dcfc217b65cacb0d7b5935fea02d97cbc
 function atualizarLotes(selectMedicamento) {
   const medicamento = selectMedicamento.value;
   const linha = selectMedicamento.closest(".form-grid");
