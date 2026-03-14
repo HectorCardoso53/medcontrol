@@ -10,6 +10,65 @@ import {
   updateDoc,
 } from "./firebase.js";
 
+import { auth } from "./auth.js";
+import {
+  onAuthStateChanged,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+import { where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+let usuarioNivel = "usuario";
+let pacientesCache = [];
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  const usuarioSpan = document.getElementById("usuarioLogado");
+
+  if (usuarioSpan) {
+    usuarioSpan.textContent = "👤 " + user.email;
+  }
+
+  try {
+    const q = query(
+      collection(db, "usuarios"),
+      where("email", "==", user.email),
+    );
+
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      usuarioNivel = snap.docs[0].data().nivel || "usuario";
+    }
+  } catch (err) {
+    console.error("Erro ao buscar usuário:", err);
+  }
+
+  console.log("🔐 Nível do usuário:", usuarioNivel);
+
+  const btnAuditoria = document.querySelector('[data-section="auditoria"]');
+
+  if (btnAuditoria) {
+    btnAuditoria.style.display = usuarioNivel === "admin" ? "block" : "none";
+  }
+});
+
+const btnLogout = document.getElementById("btnLogout");
+
+if (btnLogout) {
+  btnLogout.addEventListener("click", async () => {
+    if (confirm("Deseja sair do sistema?")) {
+      await signOut(auth);
+
+      window.location.href = "index.html";
+    }
+  });
+}
+
 let selectMedicamentoInstance = null;
 
 async function carregarDados() {
@@ -37,6 +96,55 @@ async function carregarDados() {
   saidasSnap.forEach((doc) => state.saidas.push({ id: doc.id, ...doc.data() }));
 
   console.log("🔥 Dados carregados do Firestore");
+}
+
+async function carregarSelectPacientes() {
+  const select = document.getElementById("nomePaciente");
+  if (!select) return;
+
+  select.innerHTML = '<option value="">Digite para buscar paciente</option>';
+
+  const snap = await getDocs(collection(db, "pacientes"));
+
+  pacientesCache = [];
+
+  snap.forEach((docSnap) => {
+    const p = docSnap.data();
+
+    pacientesCache.push({
+      id: docSnap.id,
+      ...p,
+    });
+
+    const option = document.createElement("option");
+    option.value = docSnap.id;
+    option.textContent = p.nome;
+
+    select.appendChild(option);
+  });
+}
+
+function ativarBuscaPaciente() {
+  const selectPaciente = new TomSelect("#nomePaciente", {
+    create: false,
+    placeholder: "Digite o nome do paciente...",
+
+    onChange: function (value) {
+      const paciente = pacientesCache.find((p) => p.id === value);
+
+      if (!paciente) return;
+
+      // endereço
+      document.getElementById("endereco").value = paciente.endereco || "";
+
+      // bairro (TomSelect)
+      const bairroSelect = document.getElementById("bairro");
+
+      if (bairroSelect && bairroSelect.tomselect) {
+        bairroSelect.tomselect.setValue(paciente.bairro || "");
+      }
+    },
+  });
 }
 
 // Configurações Globais
@@ -79,10 +187,6 @@ let state = {
 };
 
 let atendimentosFiltrados = []; // 🔥 ESSA LINHA FALTAVA
-
-// ===================================
-// FUNÇÕES DE UTILIDADE
-// ===================================
 
 function carregarSelectBairros() {
   const select = document.getElementById("bairro");
@@ -156,8 +260,86 @@ function inicializarNavegacao() {
   });
 }
 
+async function salvarPaciente(e) {
+  e.preventDefault();
+
+  const nome = document.getElementById("pacienteNome").value.trim();
+  const telefone = document.getElementById("pacienteTelefone").value.trim();
+  const bairro = document.getElementById("pacienteBairro").value.trim();
+  const endereco = document.getElementById("pacienteEndereco").value.trim();
+
+  if (!nome) {
+    mostrarToast("Nome do paciente é obrigatório", "error");
+    return;
+  }
+
+  try {
+    // 🔎 verifica duplicado
+    const q = query(collection(db, "pacientes"), where("nome", "==", nome));
+
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      mostrarToast("Paciente já cadastrado!", "warning");
+      return;
+    }
+
+    const paciente = {
+      nome,
+      telefone,
+      bairro,
+      endereco,
+      criadoEm: new Date(),
+    };
+
+    await addDoc(collection(db, "pacientes"), paciente);
+
+    mostrarToast("Paciente cadastrado!", "success");
+
+    document.getElementById("formPaciente").reset();
+
+    carregarPacientes();
+  } catch (err) {
+    console.error(err);
+    mostrarToast("Erro ao cadastrar paciente", "error");
+  }
+}
+async function carregarPacientes() {
+  const tbody = document.getElementById("tabelaPacientes");
+
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  const snap = await getDocs(query(collection(db, "pacientes")));
+
+  snap.forEach((docSnap) => {
+    const p = docSnap.data();
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+<td>${p.nome}</td>
+<td>${p.telefone || "-"}</td>
+<td>${p.bairro || "-"}</td>
+
+<td>
+<button class="btn btn-danger"
+onclick="excluirPaciente('${docSnap.id}')">
+🗑️
+</button>
+</td>
+`;
+
+    tbody.appendChild(tr);
+  });
+}
+
 function atualizarSecao(secao) {
   switch (secao) {
+    case "pacientes":
+      carregarPacientes();
+      break;
     case "relacao-atendimentos":
       carregarRelacaoAtendimentos();
       break;
@@ -178,12 +360,18 @@ function atualizarSecao(secao) {
     case "relatorios":
       carregarRelatorios();
       break;
+
+    case "auditoria":
+      if (usuarioNivel !== "admin") {
+        mostrarToast("Acesso restrito à auditoria", "error");
+        return;
+      }
+
+      carregarAuditoria();
+      break;
   }
 }
 
-// ===================================
-// CADASTRO DE ATENDIMENTO
-// ===================================
 function inicializarFormAtendimento() {
   const form = document.getElementById("formAtendimento");
   const dataInput = document.getElementById("dataAtendimento");
@@ -198,20 +386,25 @@ function inicializarFormAtendimento() {
     const btnSalvar = form.querySelector("button[type='submit']");
     btnSalvar.disabled = true;
 
-    const nomePaciente = document.getElementById("nomePaciente").value.trim();
+    // 🔥 pega ID do paciente
+    const pacienteId = document.getElementById("nomePaciente").value;
     const bairro = document.getElementById("bairro").value;
 
-    if (!nomePaciente || !bairro) {
-      mostrarToast("Preencha nome do paciente e bairro.", "error");
+    const paciente = pacientesCache.find((p) => p.id === pacienteId);
+
+    if (!paciente || !bairro) {
+      mostrarToast("Selecione um paciente válido e bairro.", "error");
       btnSalvar.disabled = false;
       return;
     }
+
+    const nomePaciente = paciente.nome;
 
     const itens = [];
     let erroEstoque = false;
 
     const linhas = document.querySelectorAll(
-      "#listaMedicamentosReceita .form-grid",
+      "#listaMedicamentosReceita .form-grid"
     );
 
     for (const linha of linhas) {
@@ -220,25 +413,40 @@ function inicializarFormAtendimento() {
       const quantidadeInput = linha.querySelector(".quantidade-input");
       const quantidade = parseInt(quantidadeInput?.value || 0);
 
+      // 🔎 Verifica retirada duplicada no mesmo dia
+      const retiradaHoje = state.saidas.find(
+        (s) =>
+          s.pacienteId === pacienteId &&
+          s.medicamento === medicamento &&
+          s.data === dataInput.value
+      );
+
+      if (retiradaHoje) {
+        mostrarToast(
+          `⚠ ${nomePaciente} já retirou ${medicamento} hoje.`,
+          "warning"
+        );
+      }
+
       quantidadeInput.style.border = "";
 
       if (!medicamento || !lote || quantidade <= 0) {
         mostrarToast(
           "Preencha medicamento, lote e quantidade corretamente.",
-          "error",
+          "error"
         );
         erroEstoque = true;
         break;
       }
 
       const medInfo = state.medicamentos.find(
-        (m) => m.descricao === medicamento && m.lote === lote,
+        (m) => m.descricao === medicamento && m.lote === lote
       );
 
       if (!medInfo) {
         mostrarToast(
           `Lote ${lote} não encontrado para ${medicamento}`,
-          "error",
+          "error"
         );
         erroEstoque = true;
         break;
@@ -256,7 +464,7 @@ function inicializarFormAtendimento() {
       if (saldoDisponivel < quantidade) {
         mostrarToast(
           `⚠ Estoque insuficiente no lote ${lote}. Disponível: ${saldoDisponivel}`,
-          "error",
+          "error"
         );
 
         quantidadeInput.style.border = "2px solid red";
@@ -278,31 +486,62 @@ function inicializarFormAtendimento() {
       return;
     }
 
+    const user = auth.currentUser;
+
     const atendimento = {
       data: dataInput.value,
-      nomePaciente,
+
+      pacienteId: pacienteId,
+      nomePaciente: nomePaciente,
+
       rg: document.getElementById("rg").value || "",
       cartaoSus: document.getElementById("cartaoSus").value || "",
       contato: document.getElementById("contato").value || "",
       endereco: document.getElementById("endereco").value || "",
       bairro,
+
       itens,
       criadoEm: new Date(),
+
+      criadoPor: {
+        uid: user.uid,
+        email: user.email,
+      },
     };
 
     try {
-      // salva atendimento
+      // 🔥 salva atendimento
       const ref = await addDoc(collection(db, "atendimentos"), atendimento);
+
       state.atendimentos.push({ id: ref.id, ...atendimento });
 
-      // salva saídas
+      await registrarAuditoria("CRIAR_ATENDIMENTO", "atendimentos", ref.id, {
+        paciente: nomePaciente,
+      });
+
+      // 🔥 salva saídas
       const promises = itens.map((item) => {
+        const agora = new Date();
+
         const saida = {
           data: atendimento.data,
+
+          hora: agora.toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+
           medicamento: item.medicamento,
           lote: item.lote,
           quantidade: item.quantidade,
-          referencia: atendimento.nomePaciente,
+
+          pacienteId: pacienteId,
+          pacienteNome: nomePaciente,
+
+          usuario: {
+            uid: user.uid,
+            email: user.email,
+          },
         };
 
         return addDoc(collection(db, "saidas"), saida).then((saidaRef) => {
@@ -312,12 +551,12 @@ function inicializarFormAtendimento() {
 
       await Promise.all(promises);
 
-      // limpeza do formulário
+      // 🔥 limpa formulário
       form.reset();
       dataInput.value = new Date().toISOString().split("T")[0];
       document.getElementById("listaMedicamentosReceita").innerHTML = "";
 
-      // atualização da interface
+      // 🔥 atualiza interface
       carregarSelectMedicamentos();
       carregarTabelaSaidas();
       filtrarEstoque();
@@ -326,7 +565,12 @@ function inicializarFormAtendimento() {
       mostrarToast("Atendimento salvo com sucesso!", "success");
     } catch (err) {
       console.error(err);
-      mostrarToast("Erro ao salvar atendimento", "error");
+
+      if (err.code === "permission-denied") {
+        mostrarToast("Você não tem permissão para esta ação.", "error");
+      } else {
+        mostrarToast("Erro ao salvar no banco.", "error");
+      }
     }
 
     btnSalvar.disabled = false;
@@ -402,23 +646,24 @@ function carregarFiltroMedicamentos() {
   });
 }
 
-function excluirAtendimento(id) {
-  if (confirm("Deseja realmente excluir este atendimento?")) {
-    // Remove atendimento
+async function excluirAtendimento(id) {
+  if (!confirm("Deseja realmente excluir este atendimento?")) return;
+
+  try {
+    await deleteDoc(doc(db, "atendimentos", id));
+
+    await registrarAuditoria("EXCLUIR_ATENDIMENTO", "atendimentos", id);
+
     state.atendimentos = state.atendimentos.filter((a) => a.id !== id);
 
-    // Remove saída relacionada (pela referência)
-    const atendimento = state.atendimentos.find((a) => a.id === id);
-    if (atendimento) {
-      const referencia = `${atendimento.nomePaciente} - ${formatarData(atendimento.data)}`;
-      state.saidas = state.saidas.filter((s) => s.referencia !== referencia);
-    }
+    carregarRelacaoAtendimentos();
 
-    carregarTabelaAtendimentos();
-    mostrarToast("Atendimento excluído com sucesso!", "success");
+    mostrarToast("Atendimento excluído!", "success");
+  } catch (err) {
+    console.error(err);
+    mostrarToast("Erro ao excluir atendimento", "error");
   }
 }
-
 // ===================================
 // CADASTRO DE MEDICAMENTOS
 // ===================================
@@ -458,6 +703,12 @@ function inicializarFormMedicamentos() {
         await updateDoc(
           doc(db, "medicamentos", state.editandoMedicamentoId),
           medicamento,
+        );
+
+        await registrarAuditoria(
+          "EDITAR_MEDICAMENTO",
+          "medicamentos",
+          state.editandoMedicamentoId,
         );
 
         // Atualiza no state local
@@ -562,6 +813,78 @@ function carregarTabelaMedicamentos() {
   });
 }
 
+async function registrarAuditoria(acao, colecao, registroId, dadosExtras = {}) {
+  const user = auth.currentUser;
+
+  if (!user) return;
+
+  const log = {
+    acao: acao,
+    colecao: colecao,
+    registroId: registroId,
+
+    usuario: {
+      uid: user.uid,
+      email: user.email,
+    },
+
+    dataHora: new Date(),
+
+    ...dadosExtras,
+  };
+
+  try {
+    await addDoc(collection(db, "auditoria"), log);
+  } catch (err) {
+    console.error("Erro ao registrar auditoria:", err);
+  }
+}
+
+async function carregarAuditoria() {
+  if (usuarioNivel !== "admin") {
+    mostrarToast("Acesso restrito à auditoria", "error");
+    return;
+  }
+
+  const tbody = document.getElementById("tabelaAuditoria");
+
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  const snap = await getDocs(
+    query(collection(db, "auditoria"), orderBy("dataHora", "desc")),
+  );
+
+  if (snap.empty) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" class="empty-state">
+        Nenhum registro encontrado
+        </td>
+      </tr>`;
+    return;
+  }
+
+  snap.forEach((docSnap) => {
+    const log = docSnap.data();
+
+    const data = new Date(log.dataHora.seconds * 1000).toLocaleString("pt-BR");
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${data}</td>
+      <td>${log.usuario?.email || "-"}</td>
+      <td>${log.acao}</td>
+      <td>${log.colecao}</td>
+      <td>${log.registroId}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
 window.editarMedicamentoEstoque = function (id) {
   const med = state.medicamentos.find((m) => m.id === id);
   if (!med) return;
@@ -613,6 +936,8 @@ async function excluirMedicamento(id) {
 
   try {
     await deleteDoc(doc(db, "medicamentos", id));
+
+    await registrarAuditoria("EXCLUIR_MEDICAMENTO", "medicamentos", id);
 
     state.medicamentos = state.medicamentos.filter((m) => m.id !== id);
 
@@ -751,10 +1076,22 @@ function filtrarEstoque() {
   }
 
   if (filtroStatus) {
-    lista = lista.filter((m) => m.statusEstoque === filtroStatus);
-  }
+  lista = lista.filter((m) => {
+    if (filtroStatus === "vencendo") {
+      return m.statusValidade === "vencendo";
+    }
 
-  lista.sort((a, b) => new Date(a.dataValidade) - new Date(b.dataValidade));
+    return m.statusEstoque === filtroStatus;
+  });
+}
+
+ lista.sort((a, b) => {
+  const nome = a.descricao.localeCompare(b.descricao, "pt-BR", { sensitivity: "base" });
+
+  if (nome !== 0) return nome;
+
+  return new Date(a.dataValidade) - new Date(b.dataValidade);
+});
 
   if (ordenar === "saldo") {
     lista.sort((a, b) => a.saldo - b.saldo);
@@ -1479,6 +1816,23 @@ function criarGraficoMedicamentos(saidasFiltradas) {
   });
 }
 
+async function excluirPaciente(id) {
+  if (!confirm("Deseja excluir este paciente?")) return;
+
+  try {
+    await deleteDoc(doc(db, "pacientes", id));
+
+    mostrarToast("Paciente excluído!", "success");
+
+    carregarPacientes();
+  } catch (err) {
+    console.error(err);
+    mostrarToast("Erro ao excluir paciente", "error");
+  }
+}
+
+window.excluirPaciente = excluirPaciente;
+
 function quebrarTexto(texto, tamanhoLinha) {
   const palavras = texto.split(" ");
   const linhas = [];
@@ -1501,25 +1855,32 @@ function quebrarTexto(texto, tamanhoLinha) {
 // ===================================
 
 document.addEventListener("DOMContentLoaded", async () => {
-  await carregarDados(); // ⬅️ agora espera Firestore
+  await carregarDados();
 
   inicializarNavegacao();
   inicializarFormAtendimento();
   inicializarFormMedicamentos();
+
+  const formPaciente = document.getElementById("formPaciente");
+  if (formPaciente) {
+    formPaciente.addEventListener("submit", salvarPaciente);
+  }
+
   carregarSelectMedicamentosCadastro();
   ativarBuscaSelectMedicamento();
 
   carregarSelectBairros();
+  ativarBuscaSelectBairro();
 
-  ativarBuscaSelectBairro(); // 🔥 AQUI
-  console.log("🔥 Dados carregados do Firestore");
   carregarFiltroAno();
-  // ✅ agora funciona
+  carregarFiltroSaidaAno();
+
   atualizarSecao("atendimento");
 
+  await carregarSelectPacientes();
+  ativarBuscaPaciente();
   console.log("✅ Sistema MedControl inicializado com sucesso!");
 });
-
 // =========================
 // MENU HAMBÚRGUER
 // =========================
@@ -1546,33 +1907,125 @@ function carregarRelacaoAtendimentos(lista = state.atendimentos) {
 
   if (lista.length === 0) {
     tbody.innerHTML = `
-            <tr>
-                <td colspan="5" class="empty-state">
-                    Nenhum atendimento encontrado
-                </td>
-            </tr>
-        `;
+      <tr>
+        <td colspan="5" class="empty-state">
+          Nenhum atendimento encontrado
+        </td>
+      </tr>
+    `;
     return;
   }
 
   lista
-    .sort((a, b) => new Date(b.data) - new Date(a.data))
+    .sort((a, b) =>
+      a.nomePaciente.localeCompare(b.nomePaciente, "pt-BR", { sensitivity: "base" })
+    )
     .forEach((atend) => {
-      // 🔥 Junta medicamentos e quantidades
-      const medicamentos = atend.itens.map((i) => i.medicamento).join("<br>");
 
+      let hora = "";
+
+      if (atend.criadoEm) {
+        const dataHora = atend.criadoEm.seconds
+          ? new Date(atend.criadoEm.seconds * 1000)
+          : new Date(atend.criadoEm);
+
+        hora = dataHora.toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      const medicamentos = atend.itens.map((i) => i.medicamento).join("<br>");
       const quantidades = atend.itens.map((i) => i.quantidade).join("<br>");
 
       const tr = document.createElement("tr");
+
       tr.innerHTML = `
-                <td>${formatarData(atend.data)}</td>
-                <td><strong>${atend.nomePaciente}</strong></td>
-                <td>${atend.bairro}</td>
-                <td>${medicamentos}</td>
-                <td>${quantidades}</td>
-            `;
+        <td>
+          <div class="data-atendimento">${formatarData(atend.data)}</div>
+          <div class="hora-atendimento">${hora}</div>
+        </td>
+
+        <td><strong>${atend.nomePaciente}</strong></td>
+        <td>${atend.bairro}</td>
+        <td>${medicamentos}</td>
+        <td>${quantidades}</td>
+      `;
+
       tbody.appendChild(tr);
     });
+}
+
+function filtrarSaidas() {
+  const ano = document.getElementById("filtroSaidaAno")?.value;
+  const mes = document.getElementById("filtroSaidaMes")?.value;
+  const medicamento = document
+    .getElementById("filtroSaidaMedicamento")
+    ?.value.toLowerCase();
+  const paciente = document
+    .getElementById("filtroSaidaPaciente")
+    ?.value.toLowerCase();
+
+  let lista = [...state.saidas];
+
+  if (ano) {
+    lista = lista.filter((s) => s.data.startsWith(ano));
+  }
+
+  if (mes) {
+    lista = lista.filter((s) => s.data.split("-")[1] === mes);
+  }
+
+  if (medicamento) {
+    lista = lista.filter((s) =>
+      s.medicamento.toLowerCase().includes(medicamento),
+    );
+  }
+
+  if (paciente) {
+    lista = lista.filter((s) => s.referencia.toLowerCase().includes(paciente));
+  }
+
+  carregarTabelaSaidasFiltrada(lista);
+}
+
+function limparFiltroSaidas() {
+  document.getElementById("filtroSaidaAno").value = "";
+  document.getElementById("filtroSaidaMes").value = "";
+  document.getElementById("filtroSaidaMedicamento").value = "";
+  document.getElementById("filtroSaidaPaciente").value = "";
+
+  carregarTabelaSaidas();
+}
+
+function carregarTabelaSaidasFiltrada(lista) {
+  const tbody = document.getElementById("tabelaSaidas");
+  tbody.innerHTML = "";
+
+  if (lista.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="6" class="empty-state">Nenhuma saída encontrada</td></tr>';
+    return;
+  }
+
+  lista.forEach((saida) => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${formatarData(saida.data)}</td>
+      <td><strong>${saida.medicamento}</strong></td>
+      <td>${saida.lote}</td>
+      <td>${saida.quantidade}</td>
+      <td>${saida.referencia}</td>
+      <td>
+        <button class="btn btn-danger" onclick="excluirSaida('${saida.id}')">
+        🗑️
+        </button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
 }
 
 function criarGraficoEvolucao(atendimentos) {
@@ -1677,25 +2130,23 @@ function criarGraficoEvolucao(atendimentos) {
 }
 
 function filtrarRelacaoAtendimentos() {
+
   const ano = document.getElementById("filtroAno")?.value;
   const mes = document.getElementById("filtroMes")?.value;
-  const paciente = document
-    .getElementById("filtroPaciente")
-    ?.value.toLowerCase();
-  const medicamento = document
-    .getElementById("filtroMedicamento")
-    ?.value.toLowerCase();
+  const paciente = document.getElementById("filtroPaciente")?.value.toLowerCase();
+  const medicamento = document.getElementById("filtroMedicamento")?.value.toLowerCase();
+  const ordenar = document.getElementById("ordenarAtendimentos")?.value;
 
   let filtrados = [...state.atendimentos];
 
   // 📅 Ano
   if (ano) {
-    filtrados = filtrados.filter((a) => a.data.startsWith(ano));
+    filtrados = filtrados.filter(a => a.data.startsWith(ano));
   }
 
   // 📅 Mês
   if (mes) {
-    filtrados = filtrados.filter((a) => {
+    filtrados = filtrados.filter(a => {
       const data = new Date(a.data + "T00:00:00");
       const mesAtendimento = String(data.getMonth() + 1).padStart(2, "0");
       return mesAtendimento === mes;
@@ -1704,24 +2155,64 @@ function filtrarRelacaoAtendimentos() {
 
   // 👤 Paciente
   if (paciente) {
-    filtrados = filtrados.filter((a) =>
-      a.nomePaciente.toLowerCase().includes(paciente),
+    filtrados = filtrados.filter(a =>
+      a.nomePaciente.toLowerCase().includes(paciente)
     );
   }
 
   // 💊 Medicamento
   if (medicamento) {
-    filtrados = filtrados.filter((a) =>
-      a.itens.some((i) => i.medicamento.toLowerCase().includes(medicamento)),
+    filtrados = filtrados.filter(a =>
+      a.itens.some(i =>
+        i.medicamento.toLowerCase().includes(medicamento)
+      )
+    );
+  }
+
+  // 🔥 ORDENAÇÃO
+  if (ordenar === "paciente") {
+    filtrados.sort((a, b) =>
+      a.nomePaciente.localeCompare(b.nomePaciente, "pt-BR", { sensitivity: "base" })
+    );
+  }
+
+  else if (ordenar === "bairro") {
+    filtrados.sort((a, b) =>
+      (a.bairro || "").localeCompare(b.bairro || "", "pt-BR", { sensitivity: "base" })
+    );
+  }
+
+  else {
+    // padrão = data mais recente
+    filtrados.sort((a, b) =>
+      new Date(b.data) - new Date(a.data)
     );
   }
 
   atendimentosFiltrados = filtrados;
+
   carregarRelacaoAtendimentos(filtrados);
 
-  document.getElementById("btnPdf").style.display = filtrados.length
-    ? "inline-flex"
-    : "none";
+  document.getElementById("btnPdf").style.display =
+    filtrados.length ? "inline-flex" : "none";
+}
+
+function carregarFiltroSaidaAno() {
+  const select = document.getElementById("filtroSaidaAno");
+
+  if (!select) return;
+
+  select.innerHTML = '<option value="">Todos</option>';
+
+  const anoAtual = new Date().getFullYear();
+
+  for (let i = 2024; i <= anoAtual + 2; i++) {
+    const option = document.createElement("option");
+    option.value = i;
+    option.textContent = i;
+
+    select.appendChild(option);
+  }
 }
 
 function baixarPdfAtendimentos() {
@@ -1743,35 +2234,27 @@ function baixarPdfAtendimentos() {
   // ================================
   // 🏛 CABEÇALHO
   // ================================
+  // 🔵 posição fixa do cabeçalho
+  const headerY = 15;
 
+  // logo
   if (logo && logo.complete) {
-    doc.addImage(logo, "PNG", pageWidth / 2 - 15, currentY, 30, 30);
+    doc.addImage(logo, "PNG", 15, headerY - 5, 18, 18);
   }
 
-  currentY += 35;
-
+  // texto alinhado com a logo
   doc.setFont(undefined, "bold");
   doc.setFontSize(14);
-  doc.text("PREFEITURA MUNICIPAL DE ORIXIMINÁ", pageWidth / 2, currentY, {
-    align: "center",
-  });
-
-  currentY += 7;
+  doc.text("PREFEITURA MUNICIPAL DE ORIXIMINÁ", 40, headerY);
 
   doc.setFontSize(12);
-  doc.text("SECRETARIA MUNICIPAL DE SAÚDE", pageWidth / 2, currentY, {
-    align: "center",
-  });
-
-  currentY += 7;
+  doc.text("SECRETARIA MUNICIPAL DE SAÚDE", 40, headerY + 6);
 
   doc.setFont(undefined, "normal");
   doc.setFontSize(10);
-  doc.text("Relatório Oficial de Atendimentos", pageWidth / 2, currentY, {
-    align: "center",
-  });
+  doc.text("Relatório Oficial de Atendimentos", 40, headerY + 12);
 
-  currentY += 5;
+  currentY = headerY + 18;
 
   doc.line(15, currentY, pageWidth - 15, currentY);
 
@@ -1808,9 +2291,23 @@ function baixarPdfAtendimentos() {
   const rows = [];
 
   atendimentosFiltrados.forEach((at) => {
+    // 🔥 calcula hora do atendimento
+    let hora = "";
+
+    if (at.criadoEm) {
+      const dataHora = at.criadoEm.seconds
+        ? new Date(at.criadoEm.seconds * 1000) // Firestore Timestamp
+        : new Date(at.criadoEm); // Date normal
+
+      hora = dataHora.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
     at.itens.forEach((item) => {
       rows.push([
-        formatarData(at.data),
+        formatarData(at.data) + " " + hora, // 🔥 AGORA DATA + HORA
         at.nomePaciente,
         at.bairro,
         item.medicamento,
@@ -1843,23 +2340,13 @@ function baixarPdfAtendimentos() {
       fillColor: [245, 247, 250],
     },
 
-    didDrawPage: function (data) {
-      doc.line(15, pageHeight - 25, pageWidth - 15, pageHeight - 25);
-
-      doc.setFontSize(9);
-      doc.text(
-        "____________________________________________",
-        15,
-        pageHeight - 18,
-      );
-
-      doc.text("Secretaria Municipal de Saúde", 15, pageHeight - 13);
-
+    didDrawPage: function () {
       doc.setFontSize(8);
+
       doc.text(
         "Documento oficial emitido pelo Sistema MedControl",
         15,
-        pageHeight - 8,
+        pageHeight - 10,
       );
 
       doc.text(
@@ -2193,11 +2680,11 @@ function adicionarMedicamentoReceita() {
     placeholder: "Digite o nome do medicamento...",
     sortField: {
       field: "text",
-      direction: "asc"
+      direction: "asc",
     },
-    onChange: function(value){
-        atualizarLotes(select);
-    }
+    onChange: function (value) {
+      atualizarLotes(select);
+    },
   });
 }
 function atualizarLotes(selectMedicamento) {
@@ -2249,6 +2736,8 @@ async function excluirSaida(id) {
   try {
     await deleteDoc(doc(db, "saidas", id));
 
+    await registrarAuditoria("EXCLUIR_SAIDA", "saidas", id);
+
     state.saidas = state.saidas.filter((s) => s.id !== id);
 
     carregarTabelaSaidas();
@@ -2275,3 +2764,7 @@ window.atualizarLotes = atualizarLotes;
 window.filtrarEstoque = filtrarEstoque;
 window.limparFiltrosEstoque = limparFiltrosEstoque;
 window.carregarRelatorios = carregarRelatorios;
+
+// 🔥 ADICIONE ESTAS
+window.filtrarSaidas = filtrarSaidas;
+window.limparFiltroSaidas = limparFiltroSaidas;

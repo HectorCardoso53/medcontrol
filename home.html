@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle de Medicamentos</title>
+    <!-- 🔥 Logo na aba do navegador -->
+    <link rel="icon" type="image/png" href="img/prefeitura.png">
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Cabeçalho -->
+    <header class="header">
+        <div class="container">
+
+            <div class="header-content">
+
+                <div class="logo">
+                    <img src="img/prefeitura.png" alt="Logo da Prefeitura">
+
+                    <div class="logo-text">
+                        <h1>Almoxarifado Central</h1>
+                        <span class="orgao">Secretaria Municipal de Saúde</span>
+                    </div>
+
+                    <div class="user-area">
+                        <span id="usuarioLogado"></span>
+                        <button id="btnLogout" class="btn btn-secondary">🔓 Sair</button>
+                    </div>
+                </div>
+
+                <nav class="nav-menu">
+                    <button class="nav-btn" data-section="pacientes">
+                        👤 Pacientes
+                    </button>
+                    <button class="nav-btn active" data-section="atendimento">👥 Atendimento</button>
+                    <button class="nav-btn" data-section="medicamentos">💊 Medicamentos</button>
+                    <button class="nav-btn" data-section="saidas">📤 Saídas</button>
+                    <button class="nav-btn" data-section="estoque">📦 Estoque</button>
+                    <button class="nav-btn" data-section="relacao-atendimentos">📋 Atendimentos</button>
+                    <button class="nav-btn" data-section="relatorios">📊 Relatórios</button>
+                    <button class="nav-btn" data-section="auditoria">
+                        📋 Auditoria
+                    </button>
+                </nav>
+
+
+
+                <button class="menu-toggle" id="menuToggle">☰</button>
+
+            </div>
+
+        </div>
+    </header>
+
+
+    <main class="main-content">
+        <div class="container">
+            <!-- SEÇÃO: CADASTRO DE -->
+            <div class="section" id="pacientes">
+
+                <div class="section-header">
+                    <h2>Cadastro de Pacientes</h2>
+                    <p class="subtitle">Gerenciamento de pacientes cadastrados</p>
+                </div>
+
+                <div class="card">
+
+                    <form id="formPaciente" class="form">
+
+                        <div class="form-grid">
+
+                            <div class="form-group">
+                                <label>Nome</label>
+                                <input type="text" id="pacienteNome" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Telefone</label>
+                                <input type="text" id="pacienteTelefone">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Bairro</label>
+                                <input type="text" id="pacienteBairro">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Endereço</label>
+                                <input type="text" id="pacienteEndereco">
+                            </div>
+
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-primary">
+                                Cadastrar Paciente
+                            </button>
+                        </div>
+
+                    </form>
+
+                </div>
+
+
+                <div class="card">
+
+                    <h3 class="card-title">Pacientes cadastrados</h3>
+
+                    <div class="table-container">
+
+                        <table class="data-table">
+
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Telefone</th>
+                                    <th>Bairro</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tabelaPacientes"></tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- SEÇÃO: CADASTRO DE ATENDIMENTO -->
+            <section id="atendimento" class="section active">
+                <div class="section-header">
+                    <h2>Cadastro de Atendimento</h2>
+                    <p class="subtitle">Registre atendimentos e distribua medicamentos aos pacientes</p>
+                </div>
+
+                <div class="card">
+                    <form id="formAtendimento" class="form">
+                        <div class="form-grid">
+
+                            <div class="form-group">
+                                <label for="nomePaciente">Paciente *</label>
+
+                                <select id="nomePaciente" placeholder="Digite para buscar paciente...">
+                                    <option value="">Digite para buscar ou cadastrar</option>
+                                </select>
+
+                            </div>
+                            <!-- Endereço + Bairro -->
+                            <div class="form-group">
+                                <label for="endereco">Endereço *</label>
+                                <input type="text" id="endereco" placeholder="Ex: Rua das Flores, 123">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="bairro">Bairro *</label>
+                                <select id="bairro" required>
+                                    <option value="">Selecione</option>
+                                </select>
+                            </div>
+
+
+                            <!-- Data + Nome -->
+                            <div class="form-group">
+                                <label for="dataAtendimento">Data</label>
+                                <input type="date" id="dataAtendimento">
+                            </div>
+
+                            <!-- RG + Cartão SUS + Contato -->
+                            <div class="form-group">
+                                <label for="rg">RG</label>
+                                <input type="text" id="rg" placeholder="Opcional">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="cartaoSus">Cartão SUS</label>
+                                <input type="text" id="cartaoSus" placeholder="Opcional">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="contato">Contato</label>
+                                <input type="tel" id="contato" placeholder="Opcional">
+                            </div>
+
+
+                            <!-- Quantidade -->
+                            <div class="form-group full-width">
+                                <label>Medicamentos da Receita</label>
+
+                                <div id="listaMedicamentosReceita"></div>
+
+                                <button type="button" class="btn btn-secondary" onclick="adicionarMedicamentoReceita()">
+                                    ➕ Adicionar medicamento
+                                </button>
+                            </div>
+
+                        </div>
+
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <span class="icon">✓</span>
+                                Salvar Atendimento
+                            </button>
+                            <button type="reset" class="btn btn-secondary">
+                                <span class="icon">↺</span>
+                                Limpar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- SEÇÃO: CADASTRO DE MEDICAMENTOS -->
+            <section id="medicamentos" class="section">
+                <div class="section-header">
+                    <h2>Cadastro de Medicamentos</h2>
+                    <p class="subtitle">Registre a entrada de medicamentos no estoque</p>
+                </div>
+
+                <div class="card">
+                    <form id="formMedicamentos" class="form">
+                        <div class="form-grid">
+
+                            <div class="form-group">
+                                <label for="descricaoMed">Medicamento</label>
+                                <select id="descricaoMed" required>
+                                    <option value="">Selecione ou digite o medicamento</option>
+                                </select>
+
+                            </div>
+
+
+                            <div class="form-group" id="novoMedicamentoGroup" style="display: none;">
+                                <label for="novoMedicamento">Novo Medicamento</label>
+                                <input type="text" id="novoMedicamento" placeholder="Ex: Paracetamol 500mg">
+                            </div>
+
+
+                            <div class="form-group">
+                                <label for="dataRecebimento">Data de Recebimento</label>
+                                <input type="date" id="dataRecebimento" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="lote">Lote</label>
+                                <input type="text" id="lote" placeholder="Ex: L12345" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="dataValidade">Data de Validade</label>
+                                <input type="date" id="dataValidade" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quantidadeRecebida">Quantidade Recebida</label>
+                                <input type="number" id="quantidadeRecebida" min="1" placeholder="0" required>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <span class="icon">✓</span>
+                                Cadastrar Medicamento
+                            </button>
+                            <button type="reset" class="btn btn-secondary">
+                                <span class="icon">↺</span>
+                                Limpar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- SEÇÃO: CONTROLE DE SAÍDAS -->
+            <section id="saidas" class="section">
+
+                <div class="section-header">
+                    <h2>Controle de Saída de Medicamentos</h2>
+                    <p class="subtitle">Visualize todas as saídas registradas no sistema</p>
+                </div>
+
+                <!-- 🔎 FILTROS -->
+                <div class="card">
+                    <div class="form-grid">
+
+                        <div class="form-group">
+                            <label>Ano</label>
+                            <select id="filtroSaidaAno">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Mês</label>
+                            <select id="filtroSaidaMes">
+                                <option value="">Todos</option>
+                                <option value="01">Jan</option>
+                                <option value="02">Fev</option>
+                                <option value="03">Mar</option>
+                                <option value="04">Abr</option>
+                                <option value="05">Mai</option>
+                                <option value="06">Jun</option>
+                                <option value="07">Jul</option>
+                                <option value="08">Ago</option>
+                                <option value="09">Set</option>
+                                <option value="10">Out</option>
+                                <option value="11">Nov</option>
+                                <option value="12">Dez</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Medicamento</label>
+                            <input type="text" id="filtroSaidaMedicamento" placeholder="Ex: Dipirona">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Paciente</label>
+                            <input type="text" id="filtroSaidaPaciente" placeholder="Nome do paciente">
+                        </div>
+
+                        <div class="form-group" style="align-self:end">
+                            <button class="btn btn-primary" onclick="filtrarSaidas()">
+                                🔍 Filtrar
+                            </button>
+
+                            <button class="btn btn-secondary" onclick="limparFiltroSaidas()">
+                                Limpar
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 📋 TABELA -->
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table">
+
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Medicamento</th>
+                                    <th>Lote</th>
+                                    <th>Quantidade</th>
+                                    <th>Referência</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tabelaSaidas"></tbody>
+
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+
+            <!-- SEÇÃO: ESTOQUE -->
+            <section id="estoque" class="section">
+
+                <div class="section-header">
+                    <h2>Estoque de Medicamentos</h2>
+                    <p class="subtitle">Acompanhe o saldo disponível e validades</p>
+                </div>
+
+                <!-- CARDS -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">📦
+                        </div>
+                        <div class="stat-content">
+                            <p class="stat-label">Total em Estoque</p>
+                            <p class="stat-value" id="totalEstoque">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">⚠️
+                        </div>
+                        <div class="stat-content">
+                            <p class="stat-label">Estoque Baixo</p>
+                            <p class="stat-value" id="estoqueBaixo">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">📅
+                        </div>
+                        <div class="stat-content">
+                            <p class="stat-label">Próximos do Vencimento</p>
+                            <p class="stat-value" id="proximosVencer">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">💊
+                        </div>
+                        <div class="stat-content">
+                            <p class="stat-label">Tipos Cadastrados</p>
+                            <p class="stat-value" id="tiposMedicamentos">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FILTRO EXECUTIVO -->
+                <div class="card filtro-estoque">
+
+                    <div class="filtro-barra">
+
+                        <!-- Busca -->
+                        <div class="filtro-busca">
+                            <span class="icone-busca">🔎</span>
+                            <input type="text" id="buscarMedicamento" placeholder="Buscar medicamento..."
+                                oninput="filtrarEstoque()">
+                        </div>
+
+                        <!-- Status -->
+                        <select id="filtroStatusEstoque" onchange="filtrarEstoque()">
+                            <option value="">Todos Status</option>
+                            <option value="sem">Sem Estoque</option>
+                            <option value="baixo">Estoque Baixo</option>
+                            <option value="vencendo">Próx. Vencimento</option>
+                            <option value="ok">OK</option>
+                        </select>
+
+                        <!-- Ordenação -->
+                        <select id="ordenarValidade" onchange="filtrarEstoque()">
+                            <option value="">Ordenar</option>
+                            <option value="validade">Validade</option>
+                            <option value="saldo">Menor Saldo</option>
+                        </select>
+
+                        <!-- Limpar -->
+                        <button class="btn btn-secondary" onclick="limparFiltrosEstoque()">
+                            Limpar
+                        </button>
+
+                    </div>
+
+                    <!-- Contador -->
+                    <div class="filtro-info">
+                        <span id="contadorEstoque">Mostrando 0 registros</span>
+                    </div>
+
+                </div>
+
+                <!-- TABELA -->
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Medicamento</th>
+                                    <th>Lote</th>
+                                    <th>Validade</th>
+                                    <th>Recebido</th>
+                                    <th>Distribuído</th>
+                                    <th>Saldo</th>
+                                    <th>Status Estoque</th>
+                                    <th>Status Validade</th>
+                                    <th>Ações</th> <!-- NOVA COLUNA -->
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaEstoque"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- SEÇÃO: RELAÇÃO DE ATENDIMENTOS -->
+            <section id="relacao-atendimentos" class="section">
+
+                <div class="section-header">
+                    <h2>Relação de Atendimentos</h2>
+                    <p class="subtitle">Consulta geral dos atendimentos registrados no sistema</p>
+                </div>
+
+                <div class="card">
+
+                    <div class="form-grid">
+
+                        <!-- ANO -->
+                        <div class="form-group">
+                            <label>Ano</label>
+                            <select id="filtroAno">
+                                <option value="">Todos</option>
+                                <option value="2026">2026</option>
+                                <option value="2027">2027</option>
+                                <option value="2028">2028</option>
+                            </select>
+                        </div>
+
+                        <!-- MÊS -->
+                        <div class="form-group">
+                            <label>Mês</label>
+                            <select id="filtroMes">
+                                <option value="">Todos</option>
+                                <option value="01">Jan</option>
+                                <option value="02">Fev</option>
+                                <option value="03">Mar</option>
+                                <option value="04">Abr</option>
+                                <option value="05">Mai</option>
+                                <option value="06">Jun</option>
+                                <option value="07">Jul</option>
+                                <option value="08">Ago</option>
+                                <option value="09">Set</option>
+                                <option value="10">Out</option>
+                                <option value="11">Nov</option>
+                                <option value="12">Dez</option>
+                            </select>
+                        </div>
+
+                        <!-- PACIENTE -->
+                        <div class="form-group">
+                            <label>Paciente</label>
+                            <input type="text" id="filtroPaciente" placeholder="Nome do paciente">
+                        </div>
+
+                        <!-- MEDICAMENTO -->
+                        <div class="form-group">
+                            <label>Medicamento</label>
+                            <input type="text" id="filtroMedicamento" placeholder="Ex: Amoxicilina">
+                        </div>
+
+                        <!-- NOVO: ORDENAR -->
+                        <div class="form-group">
+                            <label>Ordenar por</label>
+                            <select id="ordenarAtendimentos">
+                                <option value="data">Data (mais recente)</option>
+                                <option value="paciente">Paciente (A-Z)</option>
+                                <option value="bairro">Bairro (A-Z)</option>
+                            </select>
+                        </div>
+
+                        <!-- BOTÕES -->
+                        <div class="form-group" style="align-self:end">
+                            <button class="btn btn-primary" onclick="filtrarRelacaoAtendimentos()">
+                                🔍 Filtrar
+                            </button>
+
+                            <button class="btn btn-secondary" id="btnPdf" style="display:none"
+                                onclick="baixarPdfAtendimentos()">
+                                📄 Baixar PDF
+                            </button>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="card">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Paciente</th>
+                                    <th>Bairro</th>
+                                    <th>Medicamento</th>
+                                    <th>Quantidade</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tabelaRelacaoAtendimentos"></tbody>
+
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- SEÇÃO: RELATÓRIOS -->
+            <!-- ========================================= -->
+            <section id="relatorios" class="section">
+
+                <div class="section-header">
+                    <h2>Relatórios e Análises</h2>
+                    <p class="subtitle">Visualize estatísticas e tendências do sistema</p>
+                </div>
+
+                <!-- 🔎 FILTROS -->
+                <div class="card filtro-relatorio">
+                    <div class="filtro-container">
+
+                        <div class="filtro-item">
+                            <label>Ano</label>
+                            <select id="relatorioAno" onchange="carregarRelatorios()">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+
+                        <div class="filtro-item">
+                            <label>Mês</label>
+                            <select id="relatorioMes" onchange="carregarRelatorios()">
+                                <option value="">Todos</option>
+                                <option value="01">Janeiro</option>
+                                <option value="02">Fevereiro</option>
+                                <option value="03">Março</option>
+                                <option value="04">Abril</option>
+                                <option value="05">Maio</option>
+                                <option value="06">Junho</option>
+                                <option value="07">Julho</option>
+                                <option value="08">Agosto</option>
+                                <option value="09">Setembro</option>
+                                <option value="10">Outubro</option>
+                                <option value="11">Novembro</option>
+                                <option value="12">Dezembro</option>
+                            </select>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 📊 CARDS RESUMO -->
+                <div class="stats-grid">
+
+                    <div class="stat-card">
+                        <div class="stat-content">
+                            <p class="stat-label">Total de Atendimentos</p>
+                            <p class="stat-value" id="cardTotalAtendimentos">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-content">
+                            <p class="stat-label">Total Medicamentos Distribuídos</p>
+                            <p class="stat-value" id="cardTotalMedicamentos">0</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-content">
+                            <p class="stat-label">Bairro com Mais Atendimentos</p>
+                            <p class="stat-value" id="cardTopBairro">-</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- 📈 GRÁFICOS -->
+                <div class="charts-grid">
+
+                    <!-- 🏆 ATENDIMENTOS POR PACIENTE -->
+                    <div class="card">
+
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+
+                            <h3 class="card-title" style="margin:0;">
+                                Ranking de Atendimentos por Paciente
+                            </h3>
+
+
+
+                        </div>
+
+                        <div class="chart-container">
+                            <canvas id="chartAtendimentosMes"></canvas>
+                        </div>
+
+                    </div>
+
+                    <!-- 💊 MEDICAMENTOS -->
+                    <div class="card">
+                        <h3 class="card-title">Medicamentos Mais Distribuídos</h3>
+                        <div class="chart-container">
+                            <canvas id="chartMedicamentos"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 🏘 BAIRROS -->
+                    <div class="card">
+                        <h3 class="card-title">Bairros Mais Atendidos</h3>
+                        <div class="chart-container">
+                            <canvas id="chartBairros"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="card-title">Evolução de Atendimentos</h3>
+                        <div class="chart-container">
+                            <canvas id="chartEvolucaoAtendimentos"></canvas>
+                        </div>
+                    </div>
+
+
+                </div>
+
+            </section>
+
+            <div class="section" id="auditoria">
+
+                <h2>Histórico do Sistema</h2>
+
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Usuário</th>
+                            <th>Ação</th>
+                            <th>Coleção</th>
+                            <th>Registro</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tabelaAuditoria"></tbody>
+
+                </table>
+
+            </div>
+
+
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container footer-content">
+            <span>
+                © <span id="year"></span> Desenvolvido pela Secretaria de Eficiência Governamental
+                <strong>SEMEG</strong>
+            </span>
+            <span class="footer-divider">•</span>
+            <span class="footer-sub">
+                Sistema de Controle de Medicamentos
+            </span>
+        </div>
+    </footer>
+
+    <!-- Toast de Notificação -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="script.js"></script>
+
+
+    <img id="logoPrefeitura" src="img/prefeitura.png" style="display:none;">
+
+</body>
+
+</html>
